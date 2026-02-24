@@ -1,4 +1,4 @@
-# 🚌 Bus Tracking System
+# YATRA
 
 A real-time bus tracking and booking application built for Butwal, Nepal. This system enables passengers to track buses in real-time, book seats online, and receive proximity notifications, while drivers can manage their routes, update seat availability, and track passenger pickups.
 
@@ -207,4 +207,4 @@ For issues or questions, please open an issue in the repository.
 
 ---
 
-**Built with ❤️ for better public transportation in Nepal**
+
