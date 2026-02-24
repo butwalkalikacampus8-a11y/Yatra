@@ -1,0 +1,107 @@
+import { useState, useEffect } from 'react';
+import { AlertTriangle, Phone, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+
+interface AccidentAlertProps {
+    isOpen: boolean;
+    onConfirm: () => void;
+    onCancel: () => void;
+    autoConfirmSeconds?: number;
+}
+
+export default function AccidentAlert({
+    isOpen,
+    onConfirm,
+    onCancel,
+    autoConfirmSeconds = 10
+}: AccidentAlertProps) {
+    const [secondsLeft, setSecondsLeft] = useState(autoConfirmSeconds);
+    const [progress, setProgress] = useState(100);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setSecondsLeft(autoConfirmSeconds);
+            setProgress(100);
+            return;
+        }
+
+        // Play loud alarm sound
+        const audio = new Audio('/sounds/alarm.mp3'); // We'll need to make sure this exists or mock it
+        // For now, let's use the browser beep fallback in the parent component or just rely on visual
+
+        const timer = setInterval(() => {
+            setSecondsLeft((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    onConfirm();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        const progressTimer = setInterval(() => {
+            setProgress((prev) => Math.max(0, prev - (100 / (autoConfirmSeconds * 10))));
+        }, 100);
+
+        return () => {
+            clearInterval(timer);
+            clearInterval(progressTimer);
+        };
+    }, [isOpen, autoConfirmSeconds, onConfirm]);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+            <DialogContent className="bg-red-950 border-red-500 text-white sm:max-w-md border-2 shadow-[0_0_50px_rgba(239,68,68,0.5)] animate-pulse-slow">
+                <DialogHeader>
+                    <DialogTitle className="text-3xl font-black text-red-500 flex items-center gap-3 uppercase tracking-wider">
+                        <AlertTriangle className="w-10 h-10 animate-bounce" />
+                        Crash Detected
+                    </DialogTitle>
+                    <DialogDescription className="text-red-200 text-lg font-medium">
+                        We detected a possible accident. Are you safe?
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="py-6 space-y-6">
+                    <div className="text-center">
+                        <div className="text-6xl font-black text-white mb-2 font-mono">
+                            {secondsLeft}
+                        </div>
+                        <p className="text-red-300 text-sm uppercase tracking-widest">Seconds to Auto-Alert</p>
+                    </div>
+
+                    <Progress value={progress} className="h-4 bg-red-900" />
+                </div>
+
+                <DialogFooter className="flex-col sm:flex-row gap-3 sm:gap-0">
+                    <Button
+                        variant="ghost"
+                        className="w-full sm:w-auto h-14 text-lg bg-white/10 hover:bg-white/20 text-white border-2 border-white/20"
+                        onClick={onCancel}
+                    >
+                        <X className="w-6 h-6 mr-2" />
+                        I Am Safe (Cancel)
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        className="w-full sm:w-auto h-14 text-lg bg-red-600 hover:bg-red-700 animate-pulse"
+                        onClick={onConfirm}
+                    >
+                        <Phone className="w-6 h-6 mr-2" />
+                        Help Me Now
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}

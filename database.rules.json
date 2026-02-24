@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "buses": {
+      ".read": true,
+      "$busId": {
+        ".write": "auth != null && (auth.uid === $busId || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        "currentLocation": {
+          ".validate": "newData.hasChildren(['lat', 'lng', 'timestamp'])"
+        }
+      }
+    },
+    "bookings": {
+      ".read": "auth != null", 
+      ".write": "auth != null",
+      ".indexOn": ["busId", "passengerId"]
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}
