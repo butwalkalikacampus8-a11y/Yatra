@@ -479,9 +479,19 @@ function LeafletMapInner({
         const unsubscribe = subscribeToLiveUsers((users) => {
             clearTimeout(timeout);
             timeout = setTimeout(() => {
-                const visibleUsers = users.filter(
-                    u => u.role !== role && u.isOnline && u.lat && u.lng
-                );
+                const visibleUsers = users.filter(u => {
+                    // 1. Data sanity check
+                    if (!u.lat || !u.lng || !u.isOnline || !u.role) return false;
+
+                    // 2. Prevent showing yourself
+                    if (u.uid === mockUid) return false;
+
+                    // 3. Admin sees everyone
+                    if (role === 'admin') return true;
+
+                    // 4. Drivers see Passengers; Passengers see Drivers
+                    return u.role !== role;
+                });
                 setLiveUsers(visibleUsers);
             }, 300);
         });
