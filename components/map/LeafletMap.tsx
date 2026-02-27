@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Component, ReactNode, useEffect, useState, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle, Polyline, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Bus, Passenger, LiveUser } from '@/lib/types';
@@ -9,6 +9,7 @@ import { VEHICLE_TYPE_MAP, DEFAULT_LOCATION } from '@/lib/constants';
 import { subscribeToLiveUsers } from '@/lib/firebaseDb';
 import LiveUserMarker from './LiveUserMarker';
 import { useLiveLocation } from '@/hooks/useLiveLocation';
+import { getRoute } from '@/lib/routing/osrm';
 
 // Fix for default Leaflet marker icons in Next.js (configured in an effect with cleanup).
 const DefaultIcon = L.icon({
@@ -449,6 +450,11 @@ function LeafletMapInner({
     const [liveUsers, setLiveUsers] = useState<LiveUser[]>([]);
     const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
 
+    // Routing States
+    const [selectedUser, setSelectedUser] = useState<LiveUser | null>(null);
+    const [routeGeoJSON, setRouteGeoJSON] = useState<GeoJSON.LineString | null>(null);
+    const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
+
     // Determine a mock uid purely for this Map component to use (assuming current login is based on 'role').
     // In a real app we'd grab it from `useAuth()` or standard props.
     // For demo/hackathon purposes, if driver, we'll pretend uid is 'driver-123', if passenger 'pass-123'
@@ -497,6 +503,37 @@ function LeafletMapInner({
             (L.Marker.prototype as any).options.icon = previousDefaultIcon;
         };
     }, []);
+
+    // Fetch Route when selectedUser and currentPosition exist
+    useEffect(() => {
+        let isMounted = true;
+
+        if (!selectedUser) {
+            setRouteGeoJSON(null);
+            setRouteInfo(null);
+            return;
+        }
+
+        if (currentPosition && selectedUser) {
+            getRoute(
+                currentPosition[0],
+                currentPosition[1],
+                selectedUser.lat,
+                selectedUser.lng
+            ).then((res) => {
+                if (isMounted && res) {
+                    setRouteGeoJSON(res.geometry);
+                    setRouteInfo({ distance: res.distance, duration: res.duration });
+                }
+            }).catch(err => {
+                console.error("Failed to fetch route:", err);
+            });
+        }
+
+        return () => {
+            isMounted = false;
+        };
+    }, [selectedUser, currentPosition]);
 
     if (!mounted) {
         return (
@@ -578,8 +615,19 @@ function LeafletMapInner({
 
                 {/* Dynamic Real Users Rendered Here */}
                 {liveUsers.map((user) => (
-                    <LiveUserMarker key={`${user.uid}-${user.updatedAt}`} user={user} />
+                    <LiveUserMarker
+                        key={`${user.uid}-${user.updatedAt}`}
+                        user={user}
+                        onClick={() => setSelectedUser(user)}
+                        onPopupClose={() => setSelectedUser(null)}
+                        routeInfo={selectedUser?.uid === user.uid ? routeInfo : null}
+                    />
                 ))}
+
+                {/* Drawn Road Route */}
+                {routeGeoJSON && (
+                    <GeoJSON data={routeGeoJSON} style={{ color: "blue", weight: 5, opacity: 0.7 }} />
+                )}
 
                 {/* Pickup/Dropoff Markers */}
                 {pickupLocation && (

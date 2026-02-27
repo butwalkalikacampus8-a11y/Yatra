@@ -28,18 +28,45 @@ const createRoleIcon = (role: 'driver' | 'passenger') => {
     });
 };
 
-export default function LiveUserMarker({ user }: { user: LiveUser }) {
+export default function LiveUserMarker({
+    user,
+    onClick,
+    onPopupClose,
+    routeInfo
+}: {
+    user: LiveUser;
+    onClick?: () => void;
+    onPopupClose?: () => void;
+    routeInfo?: { distance: number; duration: number } | null;
+}) {
     const position: [number, number] = [user.lat, user.lng];
     const icon = createRoleIcon(user.role);
 
     return (
-        <Marker position={position} icon={icon}>
+        <Marker
+            position={position}
+            icon={icon}
+            eventHandlers={{
+                click: onClick,
+                popupclose: onPopupClose
+            }}
+        >
             <Popup>
                 <div className="p-2 text-sm text-center">
                     <div className="font-bold capitalize">{user.role}</div>
                     <div className="text-gray-500 text-xs mt-1">
                         Status: {user.isOnline ? '🟢 Online' : '⚪ Offline'}
                     </div>
+                    {routeInfo && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-1 text-left">
+                            <div className="font-semibold text-blue-600 text-[13px]">
+                                Distance: {routeInfo.distance.toFixed(2)} KM
+                            </div>
+                            <div className="font-semibold text-blue-600 text-[13px]">
+                                ETA: {Math.round(routeInfo.duration)} min
+                            </div>
+                        </div>
+                    )}
                 </div>
             </Popup>
         </Marker>
