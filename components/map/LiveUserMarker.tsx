@@ -3,33 +3,15 @@ import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { LiveUser } from '@/lib/types';
 
-// Custom modern SVG icons tailored for a hackathon demo
-const getBusSvg = () => `
-<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="12" cy="12" r="11" fill="#3b82f6" stroke="white" stroke-width="2"/>
-  <path d="M7 16H17V9C17 7.34315 15.6569 6 14 6H10C8.34315 6 7 7.34315 7 9V16Z" fill="white"/>
-  <rect x="8" y="10" width="8" height="3" rx="1" fill="#3b82f6"/>
-  <circle cx="9.5" cy="14.5" r="1.5" fill="#1e40af"/>
-  <circle cx="14.5" cy="14.5" r="1.5" fill="#1e40af"/>
-</svg>`;
-
-const getUserSvg = () => `
-<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="12" cy="12" r="11" fill="#10b981" stroke="white" stroke-width="2"/>
-  <circle cx="12" cy="9" r="3" fill="white"/>
-  <path d="M7 17C7 14.2386 9.23858 12 12 12C14.7614 12 17 14.2386 17 17H7Z" fill="white"/>
-</svg>`;
-
 const createRoleIcon = (role: 'driver' | 'passenger') => {
-    const rawSvg = role === 'driver' ? getBusSvg() : getUserSvg();
-    const encodedSvg = encodeURIComponent(rawSvg);
+    const label = role === 'driver' ? '🚌' : '👤';
 
-    return L.icon({
-        iconUrl: `data:image/svg+xml;charset=utf-8,${encodedSvg}`,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
-        popupAnchor: [0, -20],
-        className: 'custom-hackathon-icon drop-shadow-md transition-transform duration-300 hover:scale-110'
+    return L.divIcon({
+        html: `<div style="font-size: 28px; line-height: 1; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">${label}</div>`,
+        className: 'custom-hackathon-icon flex items-center justify-center transition-transform hover:scale-110',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16]
     });
 };
 

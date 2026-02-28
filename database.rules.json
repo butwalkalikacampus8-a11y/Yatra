@@ -1,5 +1,9 @@
 {
   "rules": {
+    "live_users": {
+        ".read": true,
+        ".write": true
+    },
     "buses": {
       ".read": true,
       "$busId": {

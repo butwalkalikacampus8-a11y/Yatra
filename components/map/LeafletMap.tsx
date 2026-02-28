@@ -455,23 +455,21 @@ function LeafletMapInner({
     const [routeGeoJSON, setRouteGeoJSON] = useState<GeoJSON.LineString | null>(null);
     const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
 
-    // Determine a mock uid purely for this Map component to use (assuming current login is based on 'role').
-    // In a real app we'd grab it from `useAuth()` or standard props.
-    // For demo/hackathon purposes we need unique IDs per tab.
-    const [mockUid] = useState(() => {
-        if (role === 'admin') return undefined;
-        return role + "_" + Math.random().toString(36).substring(2, 9);
-    });
+    const [uid] = useState(() =>
+        role + "_" + Math.random().toString(36).substring(2, 9)
+    );
 
-    useEffect(() => {
-        if (mockUid) {
-            console.log("Current user:", { uid: mockUid, role });
-        }
-    }, [mockUid, role]);
+    const currentUser = {
+        uid,
+        role,
+        isOnline: true
+    };
+
+    console.log("👤 CURRENT USER:", currentUser);
 
     // Call custom hook for pushing our own location to Firebase
     const { isTracking, toggleTracking, location: liveLocation } = useLiveLocation(
-        mockUid,
+        uid,
         role === 'admin' ? undefined : role, // Admin won't broadcast
         false // Start offline
     );
@@ -492,19 +490,22 @@ function LeafletMapInner({
         const unsubscribe = subscribeToLiveUsers((users) => {
             clearTimeout(timeout);
             timeout = setTimeout(() => {
-                const visibleUsers = users.filter(u => {
-                    // 1. Data sanity check
-                    if (!u.lat || !u.lng || !u.isOnline || !u.role) return false;
+                const visibleUsers = users.filter((u: any) => {
+                    if (!u.lat || !u.lng) return false;
+                    if (!u.isOnline) return false;
 
-                    // 2. Prevent showing yourself
-                    if (u.uid === mockUid) return false;
+                    // Admin sees all
+                    if (role === "admin") return true;
 
-                    // 3. Admin sees everyone
-                    if (role === 'admin') return true;
+                    // Driver sees passenger
+                    if (role === "driver" && u.role === "passenger") return true;
 
-                    // 4. Drivers see Passengers; Passengers see Drivers
-                    return u.role !== role;
+                    // Passenger sees driver
+                    if (role === "passenger" && u.role === "driver") return true;
+
+                    return false;
                 });
+                console.log("🗺 FILTERED USERS:", visibleUsers);
                 setLiveUsers(visibleUsers);
             }, 300);
         });
