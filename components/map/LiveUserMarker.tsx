@@ -56,22 +56,48 @@ export default function LiveUserMarker({
                 popupclose: onPopupClose
             }}
         >
-            <Popup>
-                <div className="p-2 text-sm text-center">
-                    <div className="font-bold capitalize">{user.role}</div>
-                    <div className="text-gray-500 text-xs mt-1">
-                        Status: {user.isOnline ? '🟢 Online' : '⚪ Offline'}
-                    </div>
-                    {routeInfo && (
-                        <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-1 text-left">
-                            <div className="font-semibold text-blue-600 text-[13px]">
-                                Distance: {routeInfo.distance.toFixed(2)} KM
-                            </div>
-                            <div className="font-semibold text-blue-600 text-[13px]">
-                                ETA: {Math.round(routeInfo.duration)} min
-                            </div>
+            <Popup className="custom-popup min-w-[200px]">
+                <div className="flex flex-col overflow-hidden rounded-xl border-0 shadow-sm">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3 pb-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl">{user.role === 'driver' ? '🚌' : '👤'}</span>
+                            <span className="font-bold capitalize text-white tracking-wide text-[15px]">{user.role}</span>
                         </div>
-                    )}
+                    </div>
+
+                    {/* Body */}
+                    <div className="bg-white px-4 pt-4 pb-3 flex flex-col -mt-2 rounded-t-xl z-10 relative shadow-[0_-4px_10px_rgba(0,0,0,0.1)]">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="relative flex h-3 w-3">
+                                {user.isOnline && (
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                )}
+                                <span className={`relative inline-flex rounded-full h-3 w-3 ${user.isOnline ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                            </div>
+                            <span className={`text-xs font-semibold uppercase tracking-wider ${user.isOnline ? 'text-emerald-600' : 'text-slate-500'}`}>
+                                {user.isOnline ? 'Active Now' : 'Offline'}
+                            </span>
+                        </div>
+
+                        {/* Route Info Section */}
+                        {routeInfo && (
+                            <div className="mt-3 bg-blue-50/50 rounded-lg p-3 border border-blue-100 flex flex-col gap-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-500 text-xs font-medium uppercase tracking-wider">Distance</span>
+                                    <span className="font-bold text-blue-700 text-sm">{routeInfo.distance.toFixed(2)} KM</span>
+                                </div>
+                                <div className="h-[1px] w-full bg-blue-100/80"></div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-500 text-xs font-medium uppercase tracking-wider">ETA</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="font-black text-blue-600 text-lg">{Math.round(routeInfo.duration)}</span>
+                                        <span className="text-blue-500 font-bold text-xs uppercase">Min</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </Popup>
         </Marker>

@@ -205,10 +205,10 @@ function TrackingControls({ role, isTracking, onToggleTracking }: { role: string
             <button
                 type="button"
                 onClick={onToggleTracking}
-                className={`px-4 py-3 rounded-full shadow-lg font-bold text-sm flex items-center gap-2 transition-all ${isTracking ? 'bg-green-500 text-white' : 'bg-white text-gray-800 border-2 border-gray-200'
+                className={`px-5 py-3 rounded-full shadow-xl font-bold text-sm flex items-center gap-3 transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md border border-white/20 ${isTracking ? 'bg-emerald-500/90 text-white shadow-emerald-500/30' : 'bg-slate-800/90 text-white shadow-slate-900/20'
                     }`}
             >
-                <div className={`w-3 h-3 rounded-full ${isTracking ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></div>
+                <div className={`w-3 h-3 rounded-full shadow-inner ${isTracking ? 'bg-white animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)]' : 'bg-slate-400'}`}></div>
                 {isTracking ? 'ONLINE - Tracking' : 'GO ONLINE'}
             </button>
         </div>
@@ -596,9 +596,16 @@ function LeafletMapInner({
 
                 {/* Live GPS Debug Widget (HUD) */}
                 {currentPosition && (
-                    <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-3 py-2 rounded-lg shadow-md z-[1000] text-xs font-mono border border-gray-200">
-                        <span className="text-gray-500">📍 Lat:</span> {currentPosition[0].toFixed(4)} <br />
-                        <span className="text-gray-500">📍 Lng:</span> {currentPosition[1].toFixed(4)}
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/60 backdrop-blur-md px-4 py-2 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/40 z-[1000] text-sm font-mono flex gap-4 items-center transition-all duration-300 hover:bg-white/80">
+                        <div className="flex flex-col items-center">
+                            <span className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Lat</span>
+                            <span className="font-semibold text-gray-800">{currentPosition[0].toFixed(4)}</span>
+                        </div>
+                        <div className="w-[1px] h-6 bg-gray-300/60"></div>
+                        <div className="flex flex-col items-center">
+                            <span className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Lng</span>
+                            <span className="font-semibold text-gray-800">{currentPosition[1].toFixed(4)}</span>
+                        </div>
                     </div>
                 )}
 
