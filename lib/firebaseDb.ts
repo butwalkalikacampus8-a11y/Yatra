@@ -300,16 +300,32 @@ export const seedInitialData = async (buses: Bus[]) => {
 };
 
 // --- Live User Functions (Real-Time GPS Tracking) ---
+// All real-time GPS updates are stored under `locations/{id}` to align with
+// the existing bus-tracking architecture. The `role` field allows map-side
+// role-based visibility filtering.
 
 export const subscribeToLiveUsers = (callback: (users: LiveUser[]) => void) => {
     const db = getDb();
-    const usersRef = ref(db, 'live_users');
+    // Listen to `locations` node — the canonical real-time GPS store
+    const locationsRef = ref(db, 'locations');
 
-    const unsubscribe = onValue(usersRef, (snapshot) => {
+    const unsubscribe = onValue(locationsRef, (snapshot) => {
         const data = snapshot.val() || {};
-        console.log("🔥 RAW SNAPSHOT:", data);
+        console.log('🔥 LOCATIONS SNAPSHOT:', data);
 
-        const list = Object.values(data) as LiveUser[];
+        // Only yield entries that carry a `role` (i.e. written by this app)
+        const list = (Object.values(data) as any[])
+            .filter((entry) => entry.role && entry.lat && entry.lng)
+            .map((entry) => ({
+                id: entry.id,
+                role: entry.role as 'driver' | 'passenger',
+                lat: entry.lat,
+                lng: entry.lng,
+                isOnline: entry.isOnline ?? true,
+                timestamp: entry.timestamp,
+                route: entry.route,
+            })) as LiveUser[];
+
         callback(list);
     });
 
@@ -318,14 +334,39 @@ export const subscribeToLiveUsers = (callback: (users: LiveUser[]) => void) => {
 
 export const updateLiveUserStatus = async (user: LiveUser) => {
     const db = getDb();
-    const userRef = ref(db, `live_users/${user.uid}`);
 
-    await set(userRef, {
-        uid: user.uid,
+    const locationPayload: Record<string, any> = {
+        id: user.id,
         role: user.role,
         lat: user.lat,
         lng: user.lng,
-        isOnline: true,
-        updatedAt: Date.now()
-    });
+        isOnline: user.isOnline,
+        timestamp: typeof user.timestamp === 'number'
+            ? new Date(user.timestamp).toISOString()
+            : user.timestamp,
+        ...(user.route ? { route: user.route } : {}),
+    };
+
+    // Write to `locations` node — read by subscribeToLiveUsers on the map
+    const locationRef = ref(db, `locations/${user.id}`);
+    await set(locationRef, locationPayload);
+    console.log('📡 LOCATION WRITTEN:', locationPayload);
+
+    // If this is a driver, also keep `buses/{id}/currentLocation` up to date
+    // so the bus list / existing bus-tracking components stay in sync.
+    if (user.role === 'driver' && user.isOnline) {
+        const busRef = ref(db, `buses/${user.id}`);
+        const busSnapshot = await get(busRef);
+        if (busSnapshot.exists()) {
+            await update(busRef, {
+                currentLocation: {
+                    lat: user.lat,
+                    lng: user.lng,
+                    timestamp: locationPayload.timestamp,
+                },
+                locationSharingEnabled: true,
+                isActive: true,
+            });
+        }
+    }
 };

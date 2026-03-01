@@ -4,9 +4,10 @@ import { getDistanceInMeters } from '@/lib/utils';
 import { LiveUser } from '@/lib/types';
 
 export function useLiveLocation(
-    uid: string | undefined,
+    id: string | undefined,
     role: 'driver' | 'passenger' | 'admin' | undefined,
-    initialTracking: boolean = false
+    initialTracking: boolean = false,
+    route?: string
 ) {
     const [isTracking, setIsTracking] = useState(initialTracking);
     const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -21,17 +22,17 @@ export function useLiveLocation(
     };
 
     useEffect(() => {
-        if (!isTracking || !uid) {
+        if (!isTracking || !id) {
             // If tracking is turned off or invalid, update Firebase to show offline
-            if (uid && role) {
+            if (id && role) {
                 const validRole = role as 'driver' | 'passenger';
                 updateLiveUserStatus({
-                    uid,
+                    id,
                     role: validRole,
                     lat: location?.lat || 0,
                     lng: location?.lng || 0,
                     isOnline: false,
-                    updatedAt: Date.now()
+                    timestamp: new Date().toISOString()
                 }).catch(console.error);
             }
 
@@ -67,24 +68,26 @@ export function useLiveLocation(
 
                 if (shouldUpdate) {
                     console.log("📍 SENDING LOCATION:", {
-                        uid,
+                        id,
                         role,
                         lat: latitude,
                         lng: longitude
                     });
                     setLocation({ lat: latitude, lng: longitude });
 
-                    if (uid && role) {
+                    if (id && role) {
                         // Provide a userPayload for driver or passenger
                         const validRole = role as 'driver' | 'passenger';
 
                         const userPayload: LiveUser = {
-                            uid,
+                            id,
                             role: validRole,
                             lat: latitude,
                             lng: longitude,
                             isOnline: true,
-                            updatedAt: now
+                            // ISO string to match the existing `locations` node format
+                            timestamp: new Date(now).toISOString(),
+                            ...(route ? { route } : {})
                         };
 
                         updateLiveUserStatus(userPayload).catch((err) => {
@@ -112,7 +115,7 @@ export function useLiveLocation(
                 watchIdRef.current = null;
             }
         };
-    }, [isTracking, uid, role]);
+    }, [isTracking, id, role]);
 
     return {
         location,

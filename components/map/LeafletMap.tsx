@@ -238,6 +238,7 @@ function LeafletMapInner({
     pickupLocation,
     dropoffLocation,
     userLocation,
+    buses = [],
 }: LeafletMapProps) {
     const [mounted, setMounted] = useState(false);
     const [liveUsers, setLiveUsers] = useState<LiveUser[]>([]);
@@ -248,21 +249,24 @@ function LeafletMapInner({
     const [routeGeoJSON, setRouteGeoJSON] = useState<GeoJSON.LineString | null>(null);
     const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
 
-    const [uid] = useState(() =>
+    const [id] = useState(() =>
         role + "_" + Math.random().toString(36).substring(2, 9)
     );
 
     const currentUser = {
-        uid,
+        id,
         role,
         isOnline: true
     };
 
     // Call custom hook for pushing our own location to Firebase
+    // If driver, mock a single route for them to broadcast
+    const driverRoute = role === 'driver' ? (buses?.[0]?.route || 'Route 1') : undefined;
     const { isTracking, toggleTracking, location: liveLocation } = useLiveLocation(
-        uid,
+        id,
         role === 'admin' ? undefined : role, // Admin won't broadcast
-        false // Start offline
+        false, // Start offline
+        driverRoute
     );
 
     useEffect(() => {
@@ -284,14 +288,14 @@ function LeafletMapInner({
                 const visibleUsers = users.filter((u: any) => {
                     if (!u.lat || !u.lng) return false;
                     if (!u.isOnline) return false;
+                    // Don't show yourself
+                    if (u.id === id) return false;
 
                     // Admin sees all
                     if (role === "admin") return true;
 
-                    // Driver sees passenger
+                    // Driver sees passengers; Passenger sees drivers
                     if (role === "driver" && u.role === "passenger") return true;
-
-                    // Passenger sees driver
                     if (role === "passenger" && u.role === "driver") return true;
 
                     return false;
@@ -380,7 +384,7 @@ function LeafletMapInner({
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                <MapUpdater center={center} selectedUserId={selectedUser?.uid} userLocation={userLocation} />
+                <MapUpdater center={center} selectedUserId={selectedUser?.id} userLocation={userLocation} />
                 <MapControls initialCenter={center} userLocation={userLocation} />
 
                 {/* Live GPS Debug Widget (HUD) */}
@@ -422,11 +426,11 @@ function LeafletMapInner({
                 {/* Dynamic Real Users Rendered Here */}
                 {liveUsers.map((user) => (
                     <LiveUserMarker
-                        key={`${user.uid}-${user.updatedAt}`}
+                        key={`${user.id}-${user.timestamp}`}
                         user={user}
                         onClick={() => setSelectedUser(user)}
                         onPopupClose={() => setSelectedUser(null)}
-                        routeInfo={selectedUser?.uid === user.uid ? routeInfo : null}
+                        routeInfo={selectedUser?.id === user.id ? routeInfo : null}
                     />
                 ))}
 

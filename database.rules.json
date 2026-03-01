@@ -15,9 +15,7 @@
     },
     "locations": {
       ".read": true,
-      "$busId": {
-        ".write": "auth != null && (auth.uid === $busId || root.child('users').child(auth.uid).child('role').val() === 'admin')"
-      }
+      ".write": true
     },
     "bookings": {
       ".read": "auth != null", 
