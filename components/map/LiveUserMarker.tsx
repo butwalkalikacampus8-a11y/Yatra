@@ -28,6 +28,7 @@ export default function LiveUserMarker({
 }) {
     const position: [number, number] = [user.lat, user.lng];
     const icon = createRoleIcon(user.role);
+    const isVerified = user.role === 'driver' && !!user.verificationBadge;
 
     return (
         <Marker
@@ -38,13 +39,37 @@ export default function LiveUserMarker({
                 popupclose: onPopupClose
             }}
         >
-            <Popup className="custom-popup min-w-[200px]">
+            <Popup className="custom-popup min-w-[220px]">
                 <div className="flex flex-col overflow-hidden rounded-xl border-0 shadow-sm">
                     {/* Header */}
                     <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3 pb-4">
-                        <div className="flex items-center gap-2">
-                            <span className="text-xl">{user.role === 'driver' ? '🚌' : '👤'}</span>
-                            <span className="font-bold capitalize text-white tracking-wide text-[15px]">{user.role}</span>
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xl">{user.role === 'driver' ? '🚌' : '👤'}</span>
+                                <span className="font-bold capitalize text-white tracking-wide text-[15px]">{user.role}</span>
+                            </div>
+                            {/* Solana Verified badge — shown only for verified drivers */}
+                            {isVerified && (
+                                <span
+                                    title="Verified on Solana Devnet"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        background: 'rgba(16,185,129,0.15)',
+                                        border: '1px solid rgba(16,185,129,0.4)',
+                                        borderRadius: '9999px',
+                                        padding: '2px 8px',
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        color: '#34d399',
+                                        letterSpacing: '0.04em',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    ✅ Solana Verified
+                                </span>
+                            )}
                         </div>
                     </div>
 
@@ -61,6 +86,26 @@ export default function LiveUserMarker({
                                 {user.isOnline ? 'Active Now' : 'Offline'}
                             </span>
                         </div>
+
+                        {/* Verification detail link */}
+                        {isVerified && user.verificationBadge && (
+                            <a
+                                href={user.verificationBadge.explorerLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontSize: '10px',
+                                    color: '#059669',
+                                    textDecoration: 'underline',
+                                    wordBreak: 'break-all',
+                                    fontFamily: 'monospace',
+                                }}
+                            >
+                                View token on Solana Explorer ↗
+                            </a>
+                        )}
 
                         {/* Route Info Section */}
                         {routeInfo && (

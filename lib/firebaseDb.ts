@@ -309,12 +309,12 @@ export const subscribeToLiveUsers = (callback: (users: LiveUser[]) => void) => {
     // Listen to `locations` node — the canonical real-time GPS store
     const locationsRef = ref(db, 'locations');
 
-    const unsubscribe = onValue(locationsRef, (snapshot) => {
+    const unsubscribe = onValue(locationsRef, async (snapshot) => {
         const data = snapshot.val() || {};
         console.log('🔥 LOCATIONS SNAPSHOT:', data);
 
-        // Only yield entries that carry a `role` (i.e. written by this app)
-        const list = (Object.values(data) as any[])
+        // Build base LiveUser list from location entries that have a role
+        const rawList = (Object.values(data) as any[])
             .filter((entry) => entry.role && entry.lat && entry.lng)
             .map((entry) => ({
                 id: entry.id,
@@ -325,6 +325,27 @@ export const subscribeToLiveUsers = (callback: (users: LiveUser[]) => void) => {
                 timestamp: entry.timestamp,
                 route: entry.route,
             })) as LiveUser[];
+
+        // For drivers, fetch their user profile to attach verificationBadge.
+        // One-shot get() per driver so the badge shows in the passenger popup.
+        const list = await Promise.all(
+            rawList.map(async (user) => {
+                if (user.role !== 'driver') return user;
+                try {
+                    const userRef = ref(db, `users/${user.id}`);
+                    const userSnap = await get(userRef);
+                    if (userSnap.exists()) {
+                        const userData = userSnap.val();
+                        if (userData.verificationBadge) {
+                            return { ...user, verificationBadge: userData.verificationBadge };
+                        }
+                    }
+                } catch {
+                    // Non-fatal: badge just won't show for this driver
+                }
+                return user;
+            })
+        );
 
         callback(list);
     });

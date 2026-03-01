@@ -15,6 +15,13 @@ export interface LiveUser {
   isOnline: boolean;
   timestamp: string | number;
   route?: string;
+  // Populated from Firebase users/{id}/verificationBadge for verified drivers
+  verificationBadge?: {
+    mintAddress: string;
+    txSignature: string;
+    explorerLink: string;
+    verifiedAt: string;
+  };
 }
 
 export interface User {

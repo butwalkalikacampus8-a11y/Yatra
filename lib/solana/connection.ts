@@ -1,7 +1,12 @@
 import { Connection, Keypair, clusterApiUrl } from '@solana/web3.js';
-import bs58 from 'bs58';
 
-// Use environment variables or fallback to a default (not recommended for production)
+// bs58 v6: the package exports a BaseConverter as `default`.
+// Using require() here is intentional — it avoids TypeScript esModuleInterop
+// ambiguity with the CJS declaration file (export default _default).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const bs58 = require('bs58').default as { encode: (buf: Uint8Array) => string; decode: (str: string) => Uint8Array };
+
+// Use environment variables or fallback to devnet
 const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl('devnet');
 
 export const getConnection = () => {
@@ -9,20 +14,26 @@ export const getConnection = () => {
 };
 
 /**
- * Gets the server keypair. This is the authority that mints all verification badges.
- * It loads from the environment variable `SOLANA_SERVER_PRIVATE_KEY` (base58 formatted).
- * If running locally without env, it could fall back to a local file, but env is safer and required for Vercel.
+ * Gets the server keypair used to mint verification badges.
+ * Reads `SOLANA_SERVER_PRIVATE_KEY` env var (base58 encoded).
+ * This wallet must have SOL on Devnet to cover transaction fees.
+ * Fund it at: https://faucet.solana.com
  */
 export const getServerKeypair = (): Keypair => {
     const pkRaw = process.env.SOLANA_SERVER_PRIVATE_KEY;
     if (!pkRaw) {
-        throw new Error("Missing SOLANA_SERVER_PRIVATE_KEY environment variable. Please set it to a base58 encoded private key.");
+        throw new Error(
+            'Missing SOLANA_SERVER_PRIVATE_KEY. Set it in .env.local as a base58 encoded private key.'
+        );
     }
 
     try {
+        // bs58.decode returns a Uint8Array — exactly what Keypair.fromSecretKey expects
         const decoded = bs58.decode(pkRaw);
         return Keypair.fromSecretKey(decoded);
     } catch (e) {
-        throw new Error("Failed to decode SOLANA_SERVER_PRIVATE_KEY. Ensure it is a valid base58 string.");
+        throw new Error(
+            'Failed to decode SOLANA_SERVER_PRIVATE_KEY. Ensure it is a valid base58 string.'
+        );
     }
 };
