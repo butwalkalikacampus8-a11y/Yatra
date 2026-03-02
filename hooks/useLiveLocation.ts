@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { updateLiveUserStatus } from '@/lib/firebaseDb';
-import { getDistanceInMeters } from '@/lib/utils';
-import { LiveUser } from '@/lib/types';
+import { LiveUser, VehicleTypeId } from '@/lib/types';
 
 export function useLiveLocation(
     id: string | undefined,
     role: 'driver' | 'passenger' | 'admin' | undefined,
     initialTracking: boolean = false,
-    route?: string
+    route?: string,
+    vehicleType?: VehicleTypeId // 👈 UPDATED: Using VehicleTypeId
 ) {
     const [isTracking, setIsTracking] = useState(initialTracking);
     const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -16,14 +16,12 @@ export function useLiveLocation(
     const lastPushRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
     const watchIdRef = useRef<number | null>(null);
 
-    // Provide a toggle function for the driver
     const toggleTracking = () => {
         setIsTracking((prev) => !prev);
     };
 
     useEffect(() => {
         if (!isTracking || !id) {
-            // If tracking is turned off or invalid, update Firebase to show offline
             if (id && role) {
                 const validRole = role as 'driver' | 'passenger';
                 updateLiveUserStatus({
@@ -32,7 +30,8 @@ export function useLiveLocation(
                     lat: location?.lat || 0,
                     lng: location?.lng || 0,
                     isOnline: false,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    vehicleType // 👈 Include when going offline
                 }).catch(console.error);
             }
 
@@ -48,14 +47,11 @@ export function useLiveLocation(
             return;
         }
 
-        // Start watching position
         watchIdRef.current = navigator.geolocation.watchPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
                 const now = Date.now();
 
-                // Throttle React state and Firebase push to once every 3 seconds
-                // This prevents UI re-render storms and battery drain.
                 let shouldUpdate = false;
                 if (!lastPushRef.current) {
                     shouldUpdate = true;
@@ -70,13 +66,13 @@ export function useLiveLocation(
                     console.log("📍 SENDING LOCATION:", {
                         id,
                         role,
+                        vehicleType, // 👈 Log to verify it's sending
                         lat: latitude,
                         lng: longitude
                     });
                     setLocation({ lat: latitude, lng: longitude });
 
                     if (id && role) {
-                        // Provide a userPayload for driver or passenger
                         const validRole = role as 'driver' | 'passenger';
 
                         const userPayload: LiveUser = {
@@ -85,8 +81,8 @@ export function useLiveLocation(
                             lat: latitude,
                             lng: longitude,
                             isOnline: true,
-                            // ISO string to match the existing `locations` node format
                             timestamp: new Date(now).toISOString(),
+                            vehicleType, // 👈 CRITICAL: Push this to Firebase
                             ...(route ? { route } : {})
                         };
 
@@ -104,7 +100,7 @@ export function useLiveLocation(
             },
             {
                 enableHighAccuracy: true,
-                maximumAge: 0, // Force fresh location
+                maximumAge: 0,
                 timeout: 10000
             }
         );
@@ -115,7 +111,8 @@ export function useLiveLocation(
                 watchIdRef.current = null;
             }
         };
-    }, [isTracking, id, role]);
+        // Added vehicleType to dependency array
+    }, [isTracking, id, role, vehicleType, route]);
 
     return {
         location,

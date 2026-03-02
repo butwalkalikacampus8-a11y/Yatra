@@ -1,10 +1,25 @@
+'use client';
+
 import React from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import { LiveUser } from '@/lib/types';
+import { LiveUser, VehicleTypeId } from '@/lib/types';
 
-const createRoleIcon = (role: 'driver' | 'passenger') => {
-    const label = role === 'driver' ? '🚌' : '👤';
+// Helper to determine the emoji based on role and vehicle type
+const getVehicleEmoji = (role: 'driver' | 'passenger', vehicleType?: string) => {
+    if (role === 'passenger') return '👤';
+
+    switch (vehicleType as VehicleTypeId) {
+        case 'bike': return '🏍️';
+        case 'bus': return '🚌';
+        case 'taxi': return '🚕';
+        case 'others': return '🚗';
+        default: return '🚗'; // Default fallback for drivers
+    }
+};
+
+const createRoleIcon = (role: 'driver' | 'passenger', vehicleType?: string) => {
+    const label = getVehicleEmoji(role, vehicleType);
 
     return L.divIcon({
         html: `<div style="font-size: 28px; line-height: 1; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">${label}</div>`,
@@ -27,8 +42,11 @@ export default function LiveUserMarker({
     routeInfo?: { distance: number; duration: number } | null;
 }) {
     const position: [number, number] = [user.lat, user.lng];
-    const icon = createRoleIcon(user.role);
+
+    // Pass vehicleType to the icon creator
+    const icon = createRoleIcon(user.role, user.vehicleType);
     const isVerified = user.role === 'driver' && !!user.verificationBadge;
+    const currentEmoji = getVehicleEmoji(user.role, user.vehicleType);
 
     return (
         <Marker
@@ -45,26 +63,22 @@ export default function LiveUserMarker({
                     <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3 pb-4">
                         <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                                <span className="text-xl">{user.role === 'driver' ? '🚌' : '👤'}</span>
-                                <span className="font-bold capitalize text-white tracking-wide text-[15px]">{user.role}</span>
+                                <span className="text-xl">{currentEmoji}</span>
+                                <span className="font-bold capitalize text-white tracking-wide text-[15px]">
+                                    {user.role === 'driver' && user.vehicleType ? user.vehicleType : user.role}
+                                </span>
                             </div>
-                            {/* Solana Verified badge — shown only for verified drivers */}
+
+                            {/* Solana Verified badge */}
                             {isVerified && (
                                 <span
                                     title="Verified on Solana Devnet"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
                                     style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
                                         background: 'rgba(16,185,129,0.15)',
                                         border: '1px solid rgba(16,185,129,0.4)',
-                                        borderRadius: '9999px',
-                                        padding: '2px 8px',
-                                        fontSize: '10px',
-                                        fontWeight: 700,
                                         color: '#34d399',
                                         letterSpacing: '0.04em',
-                                        whiteSpace: 'nowrap',
                                     }}
                                 >
                                     ✅ Solana Verified
@@ -93,21 +107,13 @@ export default function LiveUserMarker({
                                 href={user.verificationBadge.explorerLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{
-                                    display: 'block',
-                                    marginBottom: '8px',
-                                    fontSize: '10px',
-                                    color: '#059669',
-                                    textDecoration: 'underline',
-                                    wordBreak: 'break-all',
-                                    fontFamily: 'monospace',
-                                }}
+                                className="block mb-2 text-[10px] text-emerald-600 underline break-all font-mono"
                             >
                                 View token on Solana Explorer ↗
                             </a>
                         )}
 
-                        {/* Route Info Section */}
+                        {/* Route Info Section - Populated by OSRM logic */}
                         {routeInfo && (
                             <div className="mt-3 bg-blue-50/50 rounded-lg p-3 border border-blue-100 flex flex-col gap-2">
                                 <div className="flex justify-between items-center">

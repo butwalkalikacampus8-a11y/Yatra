@@ -4,12 +4,14 @@ import React, { Component, ReactNode, useEffect, useState, useRef, useMemo } fro
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle, Polyline, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Bus, Passenger, LiveUser } from '@/lib/types';
+import { Bus, Passenger, LiveUser, VehicleTypeId } from '@/lib/types';
 import { DEFAULT_LOCATION } from '@/lib/constants';
 import { subscribeToLiveUsers } from '@/lib/firebaseDb';
 import LiveUserMarker from './LiveUserMarker';
 import { useLiveLocation } from '@/hooks/useLiveLocation';
 import { getRoute } from '@/lib/routing/osrm';
+// IMPORTANT: Import your Auth hook and Firestore functions
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 // Fix for default Leaflet marker icons in Next.js
 const DefaultIcon = L.icon({
@@ -35,7 +37,6 @@ interface LeafletMapProps {
     busLocations?: Record<string, { lat: number; lng: number; timestamp: string; heading?: number; speed?: number }>;
 }
 
-// Component to handle map center updates
 function MapUpdater({ center, selectedUserId, userLocation }: { center: { lat: number; lng: number }, selectedUserId?: string, userLocation?: { lat: number; lng: number } | null }) {
     const map = useMap();
     const [lastUserId, setLastUserId] = useState<string | undefined>(undefined);
@@ -51,9 +52,6 @@ function MapUpdater({ center, selectedUserId, userLocation }: { center: { lat: n
 
     useEffect(() => {
         if (!userLocation) return;
-
-        // Re-center if: (a) first time, or (b) location changed significantly
-        // (e.g. Kathmandu fallback -> real GPS, which is a big jump)
         const movedSignificantly = lastCenteredLat !== null &&
             Math.abs(userLocation.lat - lastCenteredLat) > 0.5;
 
@@ -70,28 +68,13 @@ function MapUpdater({ center, selectedUserId, userLocation }: { center: { lat: n
 const createLocationIcon = (color: string) => {
     return L.divIcon({
         className: 'custom-location-icon',
-        html: `<div style="
-      background-color: ${color};
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      z-index: 900;
-      pointer-events: auto;
-    "></div>`,
+        html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 900; pointer-events: auto;"></div>`,
         iconSize: [20, 20],
         iconAnchor: [10, 10],
     });
 };
 
-function MapEvents({
-    onLocationSelect,
-    role,
-}: {
-    onLocationSelect?: (loc: { lat: number; lng: number }) => void;
-    role: string;
-}) {
+function MapEvents({ onLocationSelect, role }: { onLocationSelect?: (loc: { lat: number; lng: number }) => void; role: string; }) {
     useMapEvents({
         click(e) {
             if (onLocationSelect && role === 'passenger') {
@@ -102,13 +85,7 @@ function MapEvents({
     return null;
 }
 
-function MapControls({
-    initialCenter,
-    userLocation,
-}: {
-    initialCenter: { lat: number; lng: number };
-    userLocation?: { lat: number; lng: number } | null;
-}) {
+function MapControls({ initialCenter, userLocation }: { initialCenter: { lat: number; lng: number }; userLocation?: { lat: number; lng: number } | null; }) {
     const map = useMap();
     const [locating, setLocating] = useState(false);
 
@@ -122,7 +99,6 @@ function MapControls({
             return;
         }
         if (!navigator.geolocation) return;
-
         setLocating(true);
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -137,39 +113,10 @@ function MapControls({
 
     return (
         <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
-            <button
-                type="button"
-                onClick={handleZoomIn}
-                className="rounded-full bg-white shadow-md w-12 h-12 flex items-center justify-center text-xl touch-manipulation"
-                aria-label="Zoom in"
-            >
-                +
-            </button>
-            <button
-                type="button"
-                onClick={handleZoomOut}
-                className="rounded-full bg-white shadow-md w-12 h-12 flex items-center justify-center text-xl touch-manipulation"
-                aria-label="Zoom out"
-            >
-                −
-            </button>
-            <button
-                type="button"
-                onClick={handleResetView}
-                className="rounded-full bg-white shadow-md w-12 h-12 flex items-center justify-center text-base touch-manipulation"
-                aria-label="Reset view"
-            >
-                ⟳
-            </button>
-            <button
-                type="button"
-                onClick={handleLocateUser}
-                className="rounded-full bg-blue-500 text-white shadow-md w-12 h-12 flex items-center justify-center text-base touch-manipulation disabled:opacity-60"
-                aria-label="Locate me"
-                disabled={locating}
-            >
-                {locating ? '…' : '◎'}
-            </button>
+            <button onClick={handleZoomIn} className="rounded-full bg-white shadow-md w-12 h-12 flex items-center justify-center text-xl">+</button>
+            <button onClick={handleZoomOut} className="rounded-full bg-white shadow-md w-12 h-12 flex items-center justify-center text-xl">−</button>
+            <button onClick={handleResetView} className="rounded-full bg-white shadow-md w-12 h-12 flex items-center justify-center text-base">⟳</button>
+            <button onClick={handleLocateUser} disabled={locating} className="rounded-full bg-blue-500 text-white shadow-md w-12 h-12 flex items-center justify-center text-base disabled:opacity-60">{locating ? '…' : '◎'}</button>
         </div>
     );
 }
@@ -186,7 +133,6 @@ function TrackingControls({ role, isTracking, onToggleTracking, currentPosition 
                 <div className={`w-3 h-3 rounded-full shadow-inner ${isTracking ? 'bg-white animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)]' : 'bg-slate-400'}`}></div>
                 {isTracking ? 'ONLINE - Tracking' : 'GO ONLINE'}
             </button>
-            {/* Lat/Lng HUD — inline next to tracking button */}
             {currentPosition && (
                 <div className="bg-white/60 backdrop-blur-md px-3 py-2 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/40 text-xs font-mono flex gap-3 items-center">
                     <div className="flex flex-col items-center">
@@ -199,96 +145,49 @@ function TrackingControls({ role, isTracking, onToggleTracking, currentPosition 
     )
 }
 
-// Error boundary
-interface MapErrorBoundaryProps {
-    children: ReactNode;
-    onRetry?: () => void;
-}
-
-interface MapErrorBoundaryState {
-    hasError: boolean;
-    message?: string;
-}
-
-class MapErrorBoundary extends Component<MapErrorBoundaryProps, MapErrorBoundaryState> {
-    state: MapErrorBoundaryState = { hasError: false };
-
-    static getDerivedStateFromError(error: Error): MapErrorBoundaryState {
-        return { hasError: true, message: error.message };
-    }
-
-    componentDidCatch(error: Error, info: any) {
-        console.error('Leaflet map error:', error, info);
-    }
-
-    handleRetry = () => {
-        this.setState({ hasError: false, message: undefined });
-        this.props.onRetry?.();
-    };
-
+// Error boundary code...
+class MapErrorBoundary extends Component<{ children: ReactNode, onRetry?: () => void }, { hasError: boolean, message?: string }> {
+    state = { hasError: false, message: undefined as string | undefined };
+    static getDerivedStateFromError(error: Error) { return { hasError: true, message: error.message }; }
     render() {
-        if (this.state.hasError) {
-            return (
-                <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-gray-50">
-                    <div className="text-center px-4">
-                        <p className="text-red-600 font-medium mb-2">Unable to load map.</p>
-                        {this.state.message && (
-                            <p className="text-xs text-gray-500 mb-3 break-all">{this.state.message}</p>
-                        )}
-                        <button
-                            type="button"
-                            onClick={this.handleRetry}
-                            className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
-                        >
-                            Retry
-                        </button>
-                    </div>
-                </div>
-            );
-        }
+        if (this.state.hasError) return (
+            <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-gray-50 text-center">
+                <div><p className="text-red-600 font-medium">Unable to load map.</p><button onClick={() => { this.setState({ hasError: false }); this.props.onRetry?.(); }} className="mt-2 bg-blue-600 text-white px-4 py-1 rounded">Retry</button></div>
+            </div>
+        );
         return this.props.children;
     }
 }
 
-function LeafletMapInner({
-    role,
-    onLocationSelect,
-    pickupLocation,
-    dropoffLocation,
-    userLocation,
-    buses = [],
-}: LeafletMapProps) {
+function LeafletMapInner({ role, onLocationSelect, pickupLocation, dropoffLocation, userLocation, buses = [] }: LeafletMapProps) {
+    const { currentUser } = useAuth(); // FIX: Access real UID
     const [mounted, setMounted] = useState(false);
     const [liveUsers, setLiveUsers] = useState<LiveUser[]>([]);
     const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
+    const [vehicleType, setVehicleType] = useState<VehicleTypeId | undefined>(undefined);
 
     // Routing States
     const [selectedUser, setSelectedUser] = useState<LiveUser | null>(null);
     const [routeGeoJSON, setRouteGeoJSON] = useState<GeoJSON.LineString | null>(null);
     const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
 
-    const [id] = useState(() =>
-        role + "_" + Math.random().toString(36).substring(2, 9)
-    );
+    // FIX: STABLE ID from Auth UID
+    const stableId = useMemo(() => {
+        if (currentUser?.uid) return currentUser.uid;
+        // Fallback for demo/unauth only
+        return role + "_" + Math.random().toString(36).substring(2, 7);
+    }, [currentUser, role]);
 
-    const currentUser = {
-        id,
-        role,
-        isOnline: true
-    };
+    const driverRoute = role === 'driver' ? (buses?.[0]?.route || 'Route 1') : undefined;
 
     // Call custom hook for pushing our own location to Firebase
-    // If driver, mock a single route for them to broadcast
-    const driverRoute = role === 'driver' ? (buses?.[0]?.route || 'Route 1') : undefined;
     const { isTracking, toggleTracking, location: liveLocation } = useLiveLocation(
-        id,
-        role === 'admin' ? undefined : role, // Admin won't broadcast
-        false, // Start offline
+        stableId,
+        role === 'admin' ? undefined : (role as 'driver' | 'passenger'),
+        false,
         driverRoute
     );
 
-    // Seed currentPosition from either the live GPS hook OR the parent-supplied userLocation prop.
-    // This ensures the passenger sees their own marker immediately, even before pressing GO ONLINE.
     useEffect(() => {
         if (liveLocation) {
             setCurrentPosition([liveLocation.lat, liveLocation.lng]);
@@ -298,139 +197,67 @@ function LeafletMapInner({
     }, [liveLocation, userLocation]);
 
     useEffect(() => {
-        console.log("🗺 visibleUsers:", liveUsers);
-    }, [liveUsers]);
-
-    useEffect(() => {
         let timeout: NodeJS.Timeout;
-
         const unsubscribe = subscribeToLiveUsers((users) => {
             clearTimeout(timeout);
             timeout = setTimeout(() => {
                 const visibleUsers = users.filter((u: any) => {
                     if (!u.lat || !u.lng) return false;
                     if (!u.isOnline) return false;
-                    // Don't show yourself
-                    if (u.id === id) return false;
-
-                    // Admin sees all
+                    if (u.id === stableId) return false; // Hide self
                     if (role === "admin") return true;
-
-                    // Driver sees passengers; Passenger sees drivers
                     if (role === "driver" && u.role === "passenger") return true;
                     if (role === "passenger" && u.role === "driver") return true;
-
                     return false;
                 });
                 setLiveUsers(visibleUsers);
             }, 300);
         });
-
-        return () => {
-            unsubscribe();
-            clearTimeout(timeout);
-        };
-    }, [role]);
+        return () => { unsubscribe(); clearTimeout(timeout); };
+    }, [role, stableId]);
 
     useEffect(() => {
-        // Configure default marker icon with cleanup to avoid duplicated initialization across mounts
-        const previousDefaultIcon = (L.Marker.prototype as any).options.icon;
+        const prev = (L.Marker.prototype as any).options.icon;
         (L.Marker.prototype as any).options.icon = DefaultIcon;
         setMounted(true);
-        console.log("👤 CURRENT SESSION:", currentUser);
-        return () => {
-            (L.Marker.prototype as any).options.icon = previousDefaultIcon;
-        };
+        return () => { (L.Marker.prototype as any).options.icon = prev; };
     }, []);
 
-    // Fetch Route when selectedUser and currentPosition exist
     useEffect(() => {
         let isMounted = true;
-
         if (!selectedUser) {
-            setRouteGeoJSON(null);
-            setRouteInfo(null);
-            return;
+            setRouteGeoJSON(null); setRouteInfo(null); return;
         }
-
         if (currentPosition && selectedUser) {
-            getRoute(
-                currentPosition[0],
-                currentPosition[1],
-                selectedUser.lat,
-                selectedUser.lng
-            ).then((res) => {
-                if (isMounted && res) {
-                    setRouteGeoJSON(res.geometry);
-                    setRouteInfo({ distance: res.distance, duration: res.duration });
-                }
-            }).catch(err => {
-                console.error("Failed to fetch route:", err);
-            });
+            getRoute(currentPosition[0], currentPosition[1], selectedUser.lat, selectedUser.lng)
+                .then((res) => {
+                    if (isMounted && res) {
+                        setRouteGeoJSON(res.geometry);
+                        setRouteInfo({ distance: res.distance, duration: res.duration });
+                    }
+                });
         }
-
-        return () => {
-            isMounted = false;
-        };
+        return () => { isMounted = false; };
     }, [selectedUser, currentPosition]);
 
-    if (!mounted) {
-        return (
-            <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-gray-100">
-                <div className="animate-pulse w-11/12 max-w-xl h-64 rounded-lg bg-gray-200" />
-            </div>
-        );
-    }
+    if (!mounted) return <div className="w-full h-full min-h-[300px] bg-gray-100 flex items-center justify-center"><div className="animate-pulse w-11/12 h-64 bg-gray-200 rounded-lg" /></div>;
 
-    // Calculate center
     let center = DEFAULT_LOCATION;
-    if (selectedUser) {
-        center = { lat: selectedUser.lat, lng: selectedUser.lng };
-    } else if (userLocation) {
-        center = userLocation;
-    } else if (currentPosition) {
-        center = { lat: currentPosition[0], lng: currentPosition[1] };
-    }
+    if (selectedUser) center = { lat: selectedUser.lat, lng: selectedUser.lng };
+    else if (userLocation) center = userLocation;
+    else if (currentPosition) center = { lat: currentPosition[0], lng: currentPosition[1] };
 
     return (
         <div className="relative w-full h-full min-h-[400px]">
-            <MapContainer
-                center={[center.lat, center.lng]}
-                zoom={15}
-                className="w-full h-full"
-                zoomControl={false}
-            >
+            <MapContainer center={[center.lat, center.lng]} zoom={15} className="w-full h-full" zoomControl={false}>
                 <MapEvents onLocationSelect={onLocationSelect} role={role} />
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <MapUpdater center={center} selectedUserId={selectedUser?.id} userLocation={userLocation} />
                 <MapControls initialCenter={center} userLocation={userLocation} />
-
-                {/* Online/Offline Tracking Toggle UI (includes inline LNG HUD) */}
                 <TrackingControls role={role} isTracking={isTracking} onToggleTracking={toggleTracking} currentPosition={currentPosition} />
 
-                {/* Your Own Location Marker (from live GPS) */}
-                {currentPosition && (
-                    <Marker position={currentPosition} zIndexOffset={1200}>
-                        <Popup>You (Current Location)</Popup>
-                    </Marker>
-                )}
+                {currentPosition && <Marker position={currentPosition} zIndexOffset={1200}><Popup>You (Live)</Popup></Marker>}
 
-                {/* User Location */}
-                {userLocation && (
-                    <Marker
-                        position={[userLocation.lat, userLocation.lng]}
-                        icon={createLocationIcon('#3b82f6')}
-                        zIndexOffset={1100}
-                    >
-                        <Popup>You are here</Popup>
-                    </Marker>
-                )}
-
-                {/* Dynamic Real Users Rendered Here */}
                 {liveUsers.map((user) => (
                     <LiveUserMarker
                         key={`${user.id}-${user.timestamp}`}
@@ -441,62 +268,14 @@ function LeafletMapInner({
                     />
                 ))}
 
-                {/* Drawn Road Route */}
-                {routeGeoJSON && (
-                    <GeoJSON data={routeGeoJSON} style={{ color: "blue", weight: 5, opacity: 0.7 }} />
-                )}
+                {routeGeoJSON && <GeoJSON data={routeGeoJSON} style={{ color: "blue", weight: 5, opacity: 0.7 }} />}
 
-                {/* Route Line (Passenger View: User -> Bus) */}
-                {role === 'passenger' && selectedUser && (userLocation || currentPosition) && (
-                    <Polyline
-                        positions={[
-                            userLocation
-                                ? [userLocation.lat, userLocation.lng]
-                                : currentPosition!,
-                            [selectedUser.lat, selectedUser.lng]
-                        ]}
-                        pathOptions={{ color: '#3b82f6', dashArray: '10, 10', weight: 4, opacity: 0.7 }}
-                    />
-                )}
-
-                {/* Pickup/Dropoff Markers */}
                 {pickupLocation && (
                     <>
-                        <Circle
-                            center={[pickupLocation.lat, pickupLocation.lng]}
-                            radius={500}
-                            pathOptions={{ color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.05 }}
-                        />
-                        <Circle
-                            center={[pickupLocation.lat, pickupLocation.lng]}
-                            radius={200}
-                            pathOptions={{ color: '#eab308', fillColor: '#eab308', fillOpacity: 0.08 }}
-                        />
-                        <Circle
-                            center={[pickupLocation.lat, pickupLocation.lng]}
-                            radius={50}
-                            pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.12 }}
-                        />
-                        <Marker
-                            position={[pickupLocation.lat, pickupLocation.lng]}
-                            icon={createLocationIcon('#10b981')}
-                            zIndexOffset={950}
-                        >
-                            <Popup>Pickup Location</Popup>
-                        </Marker>
+                        <Circle center={[pickupLocation.lat, pickupLocation.lng]} radius={100} pathOptions={{ color: '#22c55e' }} />
+                        <Marker position={[pickupLocation.lat, pickupLocation.lng]} icon={createLocationIcon('#10b981')}><Popup>Pickup</Popup></Marker>
                     </>
                 )}
-
-                {dropoffLocation && (
-                    <Marker
-                        position={[dropoffLocation.lat, dropoffLocation.lng]}
-                        icon={createLocationIcon('#ef4444')}
-                        zIndexOffset={950}
-                    >
-                        <Popup>Dropoff Location</Popup>
-                    </Marker>
-                )}
-
             </MapContainer>
         </div>
     );
@@ -504,13 +283,8 @@ function LeafletMapInner({
 
 export default function LeafletMap(props: LeafletMapProps) {
     const [retryKey, setRetryKey] = useState(0);
-
-    const handleRetry = () => {
-        setRetryKey(k => k + 1);
-    };
-
     return (
-        <MapErrorBoundary onRetry={handleRetry}>
+        <MapErrorBoundary onRetry={() => setRetryKey(k => k + 1)}>
             <LeafletMapInner key={retryKey} {...props} />
         </MapErrorBoundary>
     );

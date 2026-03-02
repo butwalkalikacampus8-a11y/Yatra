@@ -15,6 +15,7 @@ export interface LiveUser {
   isOnline: boolean;
   timestamp: string | number;
   route?: string;
+  vehicleType?: VehicleTypeId; // 👈 NEW: Added vehicleType
   // Populated from Firebase users/{id}/verificationBadge for verified drivers
   verificationBadge?: {
     mintAddress: string;
