@@ -48,6 +48,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.4.0",
     "utf-8-validate": "^5.0.10",
+    "web-worker": "^1.5.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
