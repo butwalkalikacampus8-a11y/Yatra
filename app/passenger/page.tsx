@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import BookingPanel from '@/components/passenger/BookingPanel';
 import SeatVisualizer from '@/components/passenger/SeatVisualizer';
+import WalletSettings from '@/components/passenger/WalletSettings';
+import TripHistory from '@/components/passenger/TripHistory';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -588,20 +590,76 @@ export default function PassengerDashboard() {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col">
       {/* 1. Header (Sticky Top) */}
-      <div className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 p-4">
+      <div className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/60 px-4 pt-4 pb-3">
         <div className="flex items-center justify-between gap-4">
-          {/* Left: Brand */}
+          {/* Left: Animated Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-              <Navigation className="w-4 h-4 text-white" />
+            {/* Animated Bus SVG Logo */}
+            <div className="relative w-10 h-10 flex items-center justify-center">
+              <svg
+                viewBox="0 0 40 40"
+                className="w-10 h-10"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ overflow: 'visible' }}
+              >
+                {/* Pulsing glow ring */}
+                <circle cx="20" cy="20" r="19" fill="none" stroke="rgba(6,182,212,0.15)" strokeWidth="1.5">
+                  <animate attributeName="r" values="17;20;17" dur="2.5s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.6;0.15;0.6" dur="2.5s" repeatCount="indefinite" />
+                </circle>
+                {/* Bus body */}
+                <g>
+                  {/* Animated forward motion */}
+                  <animateTransform attributeName="transform" attributeType="XML" type="translate"
+                    values="0,0;2,0;0,0" dur="1.8s" repeatCount="indefinite" />
+                  {/* Bus body rect */}
+                  <rect x="6" y="14" width="26" height="14" rx="3" fill="#0e7490" />
+                  {/* Roof accent */}
+                  <rect x="8" y="12" width="22" height="4" rx="2" fill="#06b6d4" />
+                  {/* Windows */}
+                  <rect x="9" y="16" width="5" height="5" rx="1" fill="#e0f9ff" opacity="0.9" />
+                  <rect x="16" y="16" width="5" height="5" rx="1" fill="#e0f9ff" opacity="0.9" />
+                  <rect x="23" y="16" width="5" height="5" rx="1" fill="#e0f9ff" opacity="0.9" />
+                  {/* Front headlight */}
+                  <rect x="30" y="18" width="3" height="3" rx="1" fill="#fde68a" opacity="0.9">
+                    <animate attributeName="opacity" values="0.9;0.4;0.9" dur="1.4s" repeatCount="indefinite" />
+                  </rect>
+                  {/* Wheels */}
+                  <circle cx="13" cy="29" r="3.5" fill="#1e293b" stroke="#06b6d4" strokeWidth="1.5" />
+                  <circle cx="25" cy="29" r="3.5" fill="#1e293b" stroke="#06b6d4" strokeWidth="1.5" />
+                  {/* Wheel spin dots */}
+                  <circle cx="13" cy="27" r="1" fill="#06b6d4">
+                    <animateTransform attributeName="transform" type="rotate" from="0 13 29" to="360 13 29" dur="0.6s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="25" cy="27" r="1" fill="#06b6d4">
+                    <animateTransform attributeName="transform" type="rotate" from="0 25 29" to="360 25 29" dur="0.6s" repeatCount="indefinite" />
+                  </circle>
+                  {/* Road dashes */}
+                  <rect x="4" y="33" width="6" height="1.5" rx="0.75" fill="#334155" />
+                  <rect x="14" y="33" width="6" height="1.5" rx="0.75" fill="#334155" />
+                  <rect x="24" y="33" width="6" height="1.5" rx="0.75" fill="#334155" />
+                </g>
+              </svg>
             </div>
+
+            {/* App Name + Status */}
             <div>
-              <h1 className="text-sm font-black text-white tracking-tight leading-none">
-                BusTracker
+              <h1
+                className="text-[22px] font-extrabold leading-none tracking-wide"
+                style={{
+                  fontFamily: 'var(--font-mukta), sans-serif',
+                  background: 'linear-gradient(135deg, #ffffff 30%, #67e8f9 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  filter: 'drop-shadow(0 0 8px rgba(6,182,212,0.4))',
+                }}
+              >
+                यात्री
+
               </h1>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-[10px] text-slate-300 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="text-[10px] text-cyan-300 font-semibold tracking-wide">
                   {buses.filter(b => b.isActive).length} Active
                 </span>
               </div>
@@ -620,17 +678,7 @@ export default function PassengerDashboard() {
               className="w-9 h-9 rounded-full bg-slate-900/50 border border-slate-700/50 text-red-400 hover:text-red-300 hover:bg-red-500/10"
             >
               <span className="sr-only">Sign Out</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" x2="9" y1="12" y2="12" />
@@ -639,13 +687,22 @@ export default function PassengerDashboard() {
           </div>
         </div>
 
-        {/* Search Bar (Mobile/Desktop) */}
-        <div className="mt-4 px-1">
-          <LocationSearch
-            onLocationSelect={handleLocationSelect}
-            placeholder="Search destination or pickup..."
-          />
+        {/* Search Bar with magnifying glass */}
+        <div className="mt-3 px-1 relative">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+          </div>
+          <div className="pl-8">
+            <LocationSearch
+              onLocationSelect={handleLocationSelect}
+              placeholder="Search destination or pickup..."
+            />
+          </div>
         </div>
+
 
         {/* Filters Row */}
         <div className="mt-4 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -721,6 +778,9 @@ export default function PassengerDashboard() {
 
       {/* 3. Scrollable Content (Below Map) */}
       <div className="flex-1 bg-slate-950 p-4 space-y-6">
+        {/* Wallet Settings */}
+        <WalletSettings />
+
         {/* Booking Panel */}
         <div className="space-y-2">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -736,6 +796,9 @@ export default function PassengerDashboard() {
             loading={bookingLoading}
           />
         </div>
+
+        {/* Trip History & NFT Receipts */}
+        <TripHistory />
 
         {/* Instructions / Tips */}
         {!selectedBus && (

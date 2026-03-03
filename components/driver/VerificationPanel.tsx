@@ -132,52 +132,63 @@ export default function VerificationPanel({ driver, onVerificationSuccess }: Ver
     if (driver.verificationBadge) {
         const badge = driver.verificationBadge;
         return (
-            <Card className="bg-emerald-950/20 border-emerald-500/30 shadow-lg">
-                <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                            <ShieldCheck className="w-6 h-6 text-emerald-400" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-lg font-bold text-white">ZK Civic Identity Verified</CardTitle>
-                            <CardDescription className="text-emerald-400/80 text-xs">
-                                Secured by Groth16 ZK-SNARK · Token-2022 Soulbound Badge
-                            </CardDescription>
-                        </div>
+            <div className="space-y-3">
+                {/* Shield + title */}
+                <div className="flex items-center gap-4">
+                    {/* Rotating shield SVG */}
+                    <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
+                        <div className="absolute inset-0 rounded-full" style={{ background: 'rgba(16,185,129,0.08)' }} />
+                        <svg viewBox="0 0 56 56" className="w-14 h-14 absolute">
+                            <circle cx="28" cy="28" r="26" fill="none" stroke="rgba(16,185,129,0.3)" strokeWidth="1"
+                                strokeDasharray="6 3">
+                                <animateTransform attributeName="transform" type="rotate"
+                                    from="0 28 28" to="360 28 28" dur="6s" repeatCount="indefinite" />
+                            </circle>
+                        </svg>
+                        <ShieldCheck className="w-7 h-7 text-emerald-400 relative z-10" />
                     </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-2.5 flex items-center gap-2">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span className="text-xs text-emerald-300 font-medium">Age ≥ 21</span>
-                        </div>
-                        <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-2.5 flex items-center gap-2">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span className="text-xs text-emerald-300 font-medium">License Valid</span>
-                        </div>
+                    <div>
+                        <p className="font-bold text-white text-sm">ZK Civic Identity Verified</p>
+                        <p className="text-[11px] text-emerald-400/80 mt-0.5">Groth16 ZK-SNARK · Soulbound Badge</p>
                     </div>
+                </div>
 
-                    {badge.zkCommitment && (
-                        <div className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/50">
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">ZK Commitment (On-Chain)</p>
-                            <p className="font-mono text-[11px] text-slate-300 break-all">
-                                {formatCommitment(badge.zkCommitment)}
-                            </p>
-                        </div>
-                    )}
-
-                    <div className="flex flex-col gap-1.5">
-                        <a
-                            href={badge.explorerLink}
-                            target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+                {/* Data cards — deep-sea blue gradient */}
+                <div className="grid grid-cols-2 gap-2">
+                    {[
+                        { label: 'Age ≥ 21', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+                        { label: 'License Valid', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+                    ].map(item => (
+                        <div key={item.label}
+                            className="flex items-center gap-2 px-3 py-3 rounded-xl border border-blue-500/20"
+                            style={{
+                                background: 'linear-gradient(135deg, rgba(30,58,138,0.4) 0%, rgba(15,23,42,0.9) 100%)',
+                                boxShadow: '0 0 12px rgba(59,130,246,0.08)',
+                            }}
                         >
-                            <ExternalLink className="w-3 h-3" /> View Soulbound Badge on Explorer
-                        </a>
+                            <span className="text-emerald-400">{item.icon}</span>
+                            <span className="text-xs text-blue-200 font-semibold">{item.label}</span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* ZK Commitment — terminal green */}
+                {badge.zkCommitment && (
+                    <div className="rounded-xl p-3 border border-slate-800"
+                        style={{ background: '#060e0a' }}>
+                        <p className="text-[9px] text-slate-600 uppercase tracking-widest mb-1.5">ZK Commitment · On-Chain</p>
+                        <p className="font-mono text-[11px] break-all"
+                            style={{ color: '#4ade80', textShadow: '0 0 8px rgba(74,222,128,0.5)' }}>
+                            {formatCommitment(badge.zkCommitment)}
+                        </p>
                     </div>
-                </CardContent>
-            </Card>
+                )}
+
+                <a href={badge.explorerLink} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <ExternalLink className="w-3 h-3" /> View Soulbound Badge on Explorer
+                </a>
+            </div>
         );
     }
 
@@ -188,21 +199,28 @@ export default function VerificationPanel({ driver, onVerificationSuccess }: Ver
     ];
 
     return (
-        <Card className="bg-slate-900/60 border-slate-700/50 shadow-lg">
+        <Card className="border-slate-800/60" style={{ background: 'rgba(11,14,20,0.9)' }}>
             <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                        <Lock className="w-5 h-5 text-blue-400" />
+                    {/* Spinning shield icon */}
+                    <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
+                        <svg viewBox="0 0 40 40" className="w-10 h-10 absolute">
+                            <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(59,130,246,0.3)" strokeWidth="1" strokeDasharray="4 2">
+                                <animateTransform attributeName="transform" type="rotate"
+                                    from="0 20 20" to="360 20 20" dur="5s" repeatCount="indefinite" />
+                            </circle>
+                        </svg>
+                        <Lock className="w-5 h-5 text-blue-400 relative z-10" />
                     </div>
                     <div>
-                        <CardTitle className="text-lg font-bold text-white">ZK Civic Identity</CardTitle>
-                        <CardDescription className="text-slate-400 text-xs">
+                        <CardTitle className="text-base font-bold text-white">ZK Civic Identity</CardTitle>
+                        <CardDescription className="text-slate-500 text-xs">
                             Prove eligibility without revealing personal data
                         </CardDescription>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-800">
+                <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-800/60">
                     {steps.map((s, i) => (
                         <div key={s.id} className="flex items-center gap-1 flex-1">
                             <div className={`text-[10px] font-semibold px-2 py-1 rounded-full transition-all ${step === s.id

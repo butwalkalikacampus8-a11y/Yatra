@@ -1,14 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Bus } from '@/lib/types';
 import { VEHICLE_TYPE_MAP } from '@/lib/constants';
-import { BusFront, MapPin, Users, Battery, Wifi, Settings, Plus, Minus } from 'lucide-react';
+import { MapPin, Plus, Minus, Cpu } from 'lucide-react';
 
 interface DriverPanelProps {
 	bus: Bus;
@@ -18,54 +16,74 @@ interface DriverPanelProps {
 	onRemoveOfflinePassenger?: () => void;
 }
 
+/** Returns an array of seat states for the dot grid */
+function buildSeatStates(bus: Bus): ('free' | 'online' | 'offline')[] {
+	const total = bus.capacity || 40;
+	const online = bus.onlineBookedSeats || 0;
+	const offline = bus.offlineOccupiedSeats || 0;
+	return Array.from({ length: total }, (_, i) => {
+		if (i < online) return 'online';
+		if (i < online + offline) return 'offline';
+		return 'free';
+	});
+}
+
+const DOT_COLOR: Record<'free' | 'online' | 'offline', { bg: string; shadow: string }> = {
+	free: { bg: '#22c55e', shadow: '0 0 4px rgba(34,197,94,0.6)' },
+	online: { bg: '#3b82f6', shadow: '0 0 4px rgba(59,130,246,0.6)' },
+	offline: { bg: '#eab308', shadow: '0 0 4px rgba(234,179,8,0.6)' },
+};
+
 export default function DriverPanel({
 	bus,
 	onLocationToggle,
 	locationEnabled,
 	onAddOfflinePassenger,
-	onRemoveOfflinePassenger
+	onRemoveOfflinePassenger,
 }: DriverPanelProps) {
-	const batteryLevel = 78;
-	const connectionStrength = 'Good';
 	const vehicleType = VEHICLE_TYPE_MAP[bus.vehicleType];
+	const seatStates = useMemo(() => buildSeatStates(bus), [bus]);
+
+	const free = seatStates.filter(s => s === 'free').length;
+	const online = seatStates.filter(s => s === 'online').length;
+	const offline = seatStates.filter(s => s === 'offline').length;
 
 	return (
-		<Card className="bg-slate-900/60 backdrop-blur-xl border-slate-700/50 shadow-xl">
-			<CardHeader className="pb-4">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-3">
-						<div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-							<BusFront className="w-5 h-5 text-blue-400" />
-						</div>
-						<div>
-							<CardTitle className="text-lg font-bold text-white">Bus Details</CardTitle>
-							<CardDescription className="text-slate-400">Vehicle & Status</CardDescription>
-						</div>
+		<div className="space-y-5">
+			{/* ── Vehicle ID Card ── */}
+			<div className="rounded-2xl border border-slate-800/60 overflow-hidden"
+				style={{ background: 'linear-gradient(135deg, rgba(14,116,144,0.08) 0%, rgba(11,14,20,1) 60%)' }}>
+
+				{/* Header bar */}
+				<div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/40">
+					<div className="flex items-center gap-2">
+						<Cpu className="w-3.5 h-3.5 text-cyan-500" />
+						<span className="text-[10px] font-bold tracking-widest text-cyan-500 uppercase">Vehicle Status Report</span>
 					</div>
-					<Badge
-						variant="outline"
-						className={`${bus.isActive
+					<Badge variant="outline"
+						className={`text-[10px] px-2 py-0 ${bus.isActive
 							? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-							: 'bg-slate-800 text-slate-400 border-slate-700'}`}
-					>
-						{bus.isActive ? 'Active' : 'Inactive'}
+							: 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+						{bus.isActive ? 'ACTIVE' : 'INACTIVE'}
 					</Badge>
 				</div>
-			</CardHeader>
-			<CardContent className="space-y-6">
-				{/* Bus Info */}
-				<div className="bg-slate-950/50 rounded-xl p-4 space-y-3 border border-slate-800">
+
+				<div className="p-4 space-y-3">
+					{/* Vehicle Number — monospace license plate */}
 					<div className="flex items-center justify-between">
-						<span className="text-sm text-slate-400">Vehicle Number</span>
-						<span className="font-mono text-white font-medium bg-slate-800 px-2 py-1 rounded">
+						<span className="text-xs text-slate-500 uppercase tracking-wider">Plate No.</span>
+						<span
+							className="font-mono text-base font-bold tracking-widest text-white px-3 py-1 rounded-lg border border-slate-700"
+							style={{ background: '#0f172a', letterSpacing: '0.15em' }}
+						>
 							{bus.busNumber}
 						</span>
 					</div>
 
 					{vehicleType && (
 						<div className="flex items-center justify-between">
-							<span className="text-sm text-slate-400">Type</span>
-							<Badge variant="outline" className="bg-slate-800 border-slate-700 text-slate-300 flex items-center gap-1">
+							<span className="text-xs text-slate-500 uppercase tracking-wider">Type</span>
+							<Badge variant="outline" className="bg-slate-800 border-slate-700 text-slate-300 gap-1">
 								<span>{vehicleType.icon}</span>
 								<span>{vehicleType.name}</span>
 							</Badge>
@@ -73,119 +91,94 @@ export default function DriverPanel({
 					)}
 
 					<div className="flex items-center justify-between">
-						<span className="text-sm text-slate-400">Route</span>
-						<span className="text-white font-medium">{bus.route}</span>
+						<span className="text-xs text-slate-500 uppercase tracking-wider">Route</span>
+						<span className="text-sm font-semibold text-cyan-300">{bus.route}</span>
 					</div>
 
 					<div className="flex items-center justify-between">
-						<span className="text-sm text-slate-400">Driver</span>
-						<div className="flex items-center gap-2">
-							{bus.driverImage ? (
-								<div className="w-6 h-6 rounded-full overflow-hidden border border-slate-600">
-									<img src={bus.driverImage} alt="Driver" className="w-full h-full object-cover" />
-								</div>
-							) : (
-								<div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">
-									{bus.driverName.charAt(0).toUpperCase()}
-								</div>
-							)}
-							<span className="text-white text-sm">{bus.driverName}</span>
-						</div>
+						<span className="text-xs text-slate-500 uppercase tracking-wider">Operator</span>
+						<span className="text-sm font-semibold text-white">{bus.driverName}</span>
 					</div>
 				</div>
+			</div>
 
-				{/* Seat Management */}
-				<div className="space-y-3">
-					<h4 className="font-medium text-sm text-slate-300 flex items-center gap-2">
-						<Users className="w-4 h-4 text-purple-400" />
-						Seat Management
-					</h4>
-					<div className="grid grid-cols-3 gap-3">
-						<div className="bg-blue-500/10 rounded-xl p-3 text-center border border-blue-500/20">
-							<div className="text-xl font-bold text-blue-400 mb-1">
-								{bus.onlineBookedSeats || 0}
-							</div>
-							<div className="text-[10px] uppercase tracking-wider text-blue-300/70 font-semibold">Online</div>
-						</div>
-						<div className="bg-yellow-500/10 rounded-xl p-3 text-center border border-yellow-500/20">
-							<div className="text-xl font-bold text-yellow-400 mb-1">
-								{bus.offlineOccupiedSeats || 0}
-							</div>
-							<div className="text-[10px] uppercase tracking-wider text-yellow-300/70 font-semibold">Offline</div>
-						</div>
-						<div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/20">
-							<div className="text-xl font-bold text-emerald-400 mb-1">
-								{bus.availableSeats !== undefined ? bus.availableSeats : bus.capacity}
-							</div>
-							<div className="text-[10px] uppercase tracking-wider text-emerald-300/70 font-semibold">Free</div>
-						</div>
-					</div>
+			{/* ── Seat Dashboard ── */}
+			<div className="rounded-2xl border border-slate-800/60 p-4 space-y-4"
+				style={{ background: 'rgba(11,14,20,0.8)' }}>
+				<p className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">Capacity Dashboard</p>
 
-					<div className="flex gap-3">
-						<Button
-							variant="outline"
-							size="sm"
-							className="flex-1 bg-slate-800/50 border-slate-700 hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-500/50 transition-all"
-							onClick={onAddOfflinePassenger}
-							disabled={!onAddOfflinePassenger}
-						>
-							<Plus className="w-4 h-4 mr-2" />
-							Add Offline
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							className="flex-1 bg-slate-800/50 border-slate-700 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/50 transition-all"
-							onClick={onRemoveOfflinePassenger}
-							disabled={!onRemoveOfflinePassenger || (bus.offlineOccupiedSeats || 0) === 0}
-						>
-							<Minus className="w-4 h-4 mr-2" />
-							Remove
-						</Button>
-					</div>
+				{/* Stat counters */}
+				<div className="grid grid-cols-3 gap-2">
+					{[
+						{ label: 'Free', value: free, color: '#22c55e', glow: 'rgba(34,197,94,0.25)' },
+						{ label: 'Online', value: online, color: '#3b82f6', glow: 'rgba(59,130,246,0.25)' },
+						{ label: 'Offline', value: offline, color: '#eab308', glow: 'rgba(234,179,8,0.25)' },
+					].map(stat => (
+						<div key={stat.label} className="rounded-xl border border-slate-800 p-3 text-center"
+							style={{ background: `rgba(${stat.glow.slice(5, -1)}, 0.06)`, boxShadow: `inset 0 0 12px ${stat.glow}` }}>
+							<div className="text-2xl font-black" style={{ color: stat.color }}>{stat.value}</div>
+							<div className="text-[10px] uppercase tracking-widest mt-0.5 font-semibold" style={{ color: stat.color, opacity: 0.7 }}>
+								{stat.label}
+							</div>
+						</div>
+					))}
 				</div>
 
-				<Separator className="bg-slate-800" />
-
-				{/* Location Settings */}
-				<div className="space-y-4">
-					<div className="flex items-center justify-between group">
-						<div className="flex items-center gap-3">
-							<div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors">
-								<MapPin className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" />
-							</div>
-							<span className="text-sm text-slate-300">Share Location</span>
-						</div>
-						<Switch
-							checked={locationEnabled}
-							onCheckedChange={onLocationToggle}
-							className="data-[state=checked]:bg-cyan-500"
+				{/* Dot Grid */}
+				<div className="flex flex-wrap gap-1.5">
+					{seatStates.map((state, i) => (
+						<div
+							key={i}
+							className="w-3 h-3 rounded-full transition-all duration-300"
+							style={{ background: DOT_COLOR[state].bg, boxShadow: DOT_COLOR[state].shadow }}
 						/>
-					</div>
-					<div className="flex items-center justify-between group">
-						<div className="flex items-center gap-3">
-							<div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
-								<Users className="w-4 h-4 text-slate-400 group-hover:text-purple-400 transition-colors" />
-							</div>
-							<span className="text-sm text-slate-300">Accepting Passengers</span>
-						</div>
-						<Switch defaultChecked className="data-[state=checked]:bg-purple-500" />
-					</div>
+					))}
 				</div>
 
-				{/* Status Indicators */}
-				<div className="bg-slate-950/30 rounded-xl p-3 flex items-center justify-between border border-slate-800/50">
-					<div className="flex items-center gap-2">
-						<Battery className="w-4 h-4 text-green-400" />
-						<span className="text-xs font-medium text-slate-400">{batteryLevel}%</span>
-					</div>
-					<div className="h-4 w-px bg-slate-800"></div>
-					<div className="flex items-center gap-2">
-						<Wifi className="w-4 h-4 text-blue-400" />
-						<span className="text-xs font-medium text-slate-400">{connectionStrength}</span>
-					</div>
+				{/* Legend */}
+				<div className="flex items-center gap-4 text-[10px] text-slate-500">
+					<span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Free</span>
+					<span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Online</span>
+					<span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500 inline-block" /> Offline</span>
 				</div>
-			</CardContent>
-		</Card>
+
+				{/* Add / Remove Buttons — 3D pressed style */}
+				<div className="flex gap-3">
+					<button
+						onClick={onAddOfflinePassenger}
+						disabled={!onAddOfflinePassenger}
+						className="flex-1 flex items-center justify-center gap-2 h-14 rounded-2xl text-sm font-bold text-emerald-300 border border-emerald-700/50 transition-all active:scale-95 disabled:opacity-30"
+						style={{
+							background: 'linear-gradient(180deg, rgba(34,197,94,0.12) 0%, rgba(22,163,74,0.06) 100%)',
+							boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 0 rgba(0,0,0,0.4)',
+						}}
+					>
+						<Plus className="w-4 h-4" /> Add Offline
+					</button>
+					<button
+						onClick={onRemoveOfflinePassenger}
+						disabled={!onRemoveOfflinePassenger || offline === 0}
+						className="flex-1 flex items-center justify-center gap-2 h-14 rounded-2xl text-sm font-bold text-red-300 border border-red-700/50 transition-all active:scale-95 disabled:opacity-30"
+						style={{
+							background: 'linear-gradient(180deg, rgba(239,68,68,0.12) 0%, rgba(220,38,38,0.06) 100%)',
+							boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 0 rgba(0,0,0,0.4)',
+						}}
+					>
+						<Minus className="w-4 h-4" /> Remove
+					</button>
+				</div>
+			</div>
+
+			{/* ── Location Sharing ── */}
+			<div className="flex items-center justify-between px-4 py-3 rounded-2xl border border-slate-800/60"
+				style={{ background: 'rgba(6,182,212,0.04)' }}>
+				<div className="flex items-center gap-3">
+					<MapPin className={`w-4 h-4 ${locationEnabled ? 'text-cyan-400' : 'text-slate-600'}`} />
+					<span className="text-sm text-slate-300 font-medium">Share Location</span>
+				</div>
+				<Switch checked={locationEnabled} onCheckedChange={onLocationToggle}
+					className="data-[state=checked]:bg-cyan-500" />
+			</div>
+		</div>
 	);
 }

@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BusFront, Users, MapPin, Clock, Navigation, Smartphone, ArrowRight, Zap, Shield, Star } from 'lucide-react';
+import { BusFront, Users, MapPin, Clock, Navigation, Smartphone, ArrowRight, Zap, Star } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import YatraHero from '@/components/YatraHero';
 
 export default function Home() {
   const { currentUser, signOut } = useAuth();
@@ -17,235 +17,236 @@ export default function Home() {
 
   const handleRoleSwitch = async (role: 'driver' | 'passenger') => {
     if (currentUser) {
-      // Sign out first, then redirect to auth with the new role
       await signOut();
       window.location.href = `/auth?role=${role}&switch_role=true`;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-700"></div>
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
+    <div className="min-h-screen bg-slate-950">
 
-      {/* Hero Section */}
-      <div className="relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32 md:pt-32 md:pb-48">
-          {/* Badge */}
-          <div className="flex justify-center mb-8 animate-fade-in">
-            <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-400/20 backdrop-blur-sm">
-              <div className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
-              </div>
-              <span className="text-sm font-medium text-cyan-400">Now Live in Butwal</span>
-            </div>
-          </div>
+      {/* ═══ HERO — Hyper-Modern Transit Cockpit ═══ */}
+      <YatraHero
+        currentUser={isClient && !!currentUser}
+        onRoleSwitch={handleRoleSwitch}
+      />
 
-          {/* Main Heading */}
-          <div className="text-center space-y-8 mb-16">
-            <h1 className="text-6xl md:text-8xl font-black text-white leading-none tracking-tighter">
-              Track Buses.
-              <br />
-              <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                Live & Free.
-              </span>
-            </h1>
-            <p className="text-xl md:text-2xl text-slate-300 max-w-3xl mx-auto font-light leading-relaxed">
-              Real-time bus tracking for Butwal. No apps, no hassle.
-              <br className="hidden md:block" />
-              Just open your browser and see where your bus is.
-            </p>
-          </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-5 justify-center items-center mb-20">
-            {isClient && currentUser ? (
-              <>
-                <Button
-                  size="lg"
-                  onClick={() => handleRoleSwitch('passenger')}
-                  className="group w-full sm:w-auto h-16 px-10 text-lg font-semibold rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-2xl shadow-cyan-500/50 border-0 transition-all duration-300 hover:scale-105"
-                >
-                  <Users className="w-6 h-6 mr-3" />
-                  Track Your Bus
-                  <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={() => handleRoleSwitch('driver')}
-                  variant="outline"
-                  className="group w-full sm:w-auto h-16 px-10 text-lg font-semibold rounded-2xl bg-white/5 border-2 border-white/20 text-white hover:bg-white/10 hover:border-white/40 backdrop-blur-sm transition-all duration-300"
-                >
-                  <BusFront className="w-6 h-6 mr-3" />
-                  I'm a Driver
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link href="/auth?role=passenger">
-                  <Button
-                    size="lg"
-                    className="group w-full sm:w-auto h-16 px-10 text-lg font-semibold rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-2xl shadow-cyan-500/50 border-0 transition-all duration-300 hover:scale-105"
-                  >
-                    <Users className="w-6 h-6 mr-3" />
-                    Track Your Bus
-                    <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </Link>
-                <Link href="/auth?role=driver">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="group w-full sm:w-auto h-16 px-10 text-lg font-semibold rounded-2xl bg-white/5 border-2 border-white/20 text-white hover:bg-white/10 hover:border-white/40 backdrop-blur-sm transition-all duration-300"
-                  >
-                    <BusFront className="w-6 h-6 mr-3" />
-                    I'm a Driver
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto">
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-white mb-2">Live</div>
-              <div className="text-sm text-slate-400 font-medium">Updates</div>
-            </div>
-            <div className="text-center border-x border-white/10">
-              <div className="text-4xl md:text-5xl font-bold text-white mb-2">Free</div>
-              <div className="text-sm text-slate-400 font-medium">Forever</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-white mb-2">Easy</div>
-              <div className="text-sm text-slate-400 font-medium">One-Tap</div>
-            </div>
-          </div>
+
+      {/* ═══ FEATURES — Animated Bento Cards ═══ */}
+      <div className="relative bg-slate-950 py-24 md:py-32 overflow-hidden">
+        {/* Background ambient glows */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
         </div>
 
-        {/* Wave Divider */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
-            <path d="M0 0L60 10C120 20 240 40 360 46.7C480 53 600 47 720 43.3C840 40 960 40 1080 46.7C1200 53 1320 67 1380 73.3L1440 80V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="url(#wave-gradient)" />
-            <defs>
-              <linearGradient id="wave-gradient" x1="0" y1="0" x2="0" y2="120" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#0f172a" stopOpacity="0" />
-                <stop offset="1" stopColor="#0f172a" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-      </div>
-
-      {/* Features Section */}
-      <div className="relative bg-slate-950 py-24 md:py-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           {/* Section Header */}
           <div className="text-center mb-20">
             <div className="inline-block mb-6">
-              <span className="px-4 py-2 rounded-full bg-blue-500/10 border border-blue-400/20 text-sm font-semibold text-blue-400">
-                FEATURES
+              <span className="px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-400/20 text-sm font-semibold text-cyan-400 tracking-widest uppercase">
+                Core Technology
               </span>
             </div>
             <h2 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tight">
-              Built for Nepal
+              Built for Nepal's Future
             </h2>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-              Every feature designed to make your daily commute smoother
+              Three pillars of a transit revolution — powered by satellite, blockchain, and cryptographic identity.
             </p>
           </div>
 
-          {/* Feature Grid */}
+          {/* Bento Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Feature 1 */}
-            <div className="group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-cyan-500/20 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyan-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Navigation className="w-8 h-8 text-white" />
+
+            {/* ── Card 1: Real-Time GPS ── */}
+            <div className="bento-card p-8">
+              {/* Corner brackets */}
+              <div className="bento-corner bento-corner-tl" />
+              <div className="bento-corner bento-corner-tr" />
+              <div className="bento-corner bento-corner-bl" />
+              <div className="bento-corner bento-corner-br" />
+
+              {/* Animation scene */}
+              <div className="relative z-10 mb-8">
+                <div className="gps-scene">
+                  {/* Orbit ring with satellite */}
+                  <div className="gps-orbit">
+                    <div className="gps-satellite" />
+                  </div>
+                  {/* Globe */}
+                  <div className="gps-globe" />
+                  {/* Laser beam */}
+                  <div className="gps-beam" />
+                  {/* Moving location dot */}
+                  <div className="gps-dot" />
+                  {/* Extra concentric rings */}
+                  <div className="absolute inset-0 rounded-full border border-cyan-400/10 scale-75 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style={{ width: '50%', height: '50%', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '1px solid rgba(0,245,255,0.08)' }} />
+                </div>
+              </div>
+
+              {/* Text */}
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(0,245,255,0.9)]" style={{ animation: 'liveDot 1.2s ease-in-out infinite' }} />
+                  <span className="text-xs font-bold text-cyan-400 tracking-widest uppercase">Live · 3s refresh</span>
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-3">Real-Time GPS</h3>
-                <p className="text-slate-400 text-lg leading-relaxed">
-                  See exactly where buses are right now. Updated every 3 seconds with pinpoint accuracy.
+                <p className="text-slate-400 leading-relaxed">
+                  A satellite network beams pinpoint signals to a moving dot in Butwal. Know exactly where your bus is — updated every 3 seconds with sub-10m accuracy.
                 </p>
               </div>
             </div>
 
-            {/* Feature 2 */}
-            <div className="group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 border border-slate-700/50 hover:border-blue-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Zap className="w-8 h-8 text-white" />
+            {/* ── Card 2: Solana Integration ── */}
+            <div className="bento-card p-8" style={{ background: 'linear-gradient(135deg, rgba(10, 5, 30, 0.95) 0%, rgba(15, 5, 40, 0.90) 100%)', borderColor: 'rgba(153, 69, 255, 0.15)' }}>
+              <div className="bento-corner bento-corner-tl" style={{ borderColor: 'rgba(153,69,255,0.35)' }} />
+              <div className="bento-corner bento-corner-tr" style={{ borderColor: 'rgba(153,69,255,0.35)' }} />
+              <div className="bento-corner bento-corner-bl" style={{ borderColor: 'rgba(153,69,255,0.35)' }} />
+              <div className="bento-corner bento-corner-br" style={{ borderColor: 'rgba(153,69,255,0.35)' }} />
+
+              {/* Animation scene */}
+              <div className="relative z-10 mb-8">
+                <div className="solana-scene">
+                  {/* Holographic shield rings */}
+                  <div className="solana-shield">
+                    <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      {/* Outer rotating dashes */}
+                      <circle cx="80" cy="80" r="72" stroke="rgba(153,69,255,0.3)" strokeWidth="1" strokeDasharray="6 4" />
+                      <circle cx="80" cy="80" r="60" stroke="rgba(20,241,149,0.2)" strokeWidth="0.5" strokeDasharray="3 8" />
+                      {/* Shield shape */}
+                      <path d="M80 16 L116 32 L116 72 Q116 100 80 120 Q44 100 44 72 L44 32 Z"
+                        stroke="rgba(153,69,255,0.5)" strokeWidth="1.5" fill="rgba(153,69,255,0.04)"
+                        strokeLinejoin="round" />
+                      {/* Inner glow lines */}
+                      <path d="M80 24 L110 38 L110 70 Q110 94 80 112 Q50 94 50 70 L50 38 Z"
+                        stroke="rgba(20,241,149,0.2)" strokeWidth="0.5" fill="none" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  {/* Solana logo */}
+                  <div className="solana-shield" style={{ animation: 'none' }}>
+                    <span className="solana-logo">◎</span>
+                  </div>
+                  {/* Floating crypto hashes */}
+                  {[
+                    { text: 'a8f2...c91b', left: '2%', bottom: '30%', delay: '0s', dur: '4s' },
+                    { text: 'f19d...4e72', right: '0%', bottom: '50%', delay: '1.5s', dur: '5s' },
+                    { text: '3b7a...8f01', left: '5%', bottom: '10%', delay: '0.8s', dur: '3.5s' },
+                    { text: '9c4f...2a88', right: '2%', bottom: '15%', delay: '2.2s', dur: '4.5s' },
+                  ].map((h, i) => (
+                    <div
+                      key={i}
+                      className="solana-hash"
+                      style={{
+                        left: h.left,
+                        right: h.right,
+                        bottom: h.bottom,
+                        animationDelay: h.delay,
+                        animationDuration: h.dur,
+                      }}
+                    >
+                      {h.text}
+                    </div>
+                  ))}
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Instant Booking</h3>
-                <p className="text-slate-400 text-lg leading-relaxed">
-                  One tap on the map. That's it. No forms, no waiting, no confusion. Just book and go.
+              </div>
+
+              {/* Text */}
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full" style={{ background: '#9945ff', boxShadow: '0 0 8px rgba(153,69,255,0.9)' }} />
+                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#9945ff' }}>Solana · Sub-second finality</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Solana Integration</h3>
+                <p className="text-slate-400 leading-relaxed">
+                  Every booking is a cryptographic transaction on Solana. Lightning-fast, tamper-proof, and secured inside a holographic shield of zero-knowledge proofs.
                 </p>
               </div>
             </div>
 
-            {/* Feature 3 */}
-            <div className="group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 border border-slate-700/50 hover:border-purple-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-500/20 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <MapPin className="w-8 h-8 text-white" />
+            {/* ── Card 3: ZK-Civic Identity ── */}
+            <div className="bento-card p-8" style={{ background: 'linear-gradient(135deg, rgba(5, 20, 10, 0.95) 0%, rgba(5, 25, 15, 0.90) 100%)', borderColor: 'rgba(34, 197, 94, 0.15)' }}>
+              <div className="bento-corner bento-corner-tl" style={{ borderColor: 'rgba(34,197,94,0.35)' }} />
+              <div className="bento-corner bento-corner-tr" style={{ borderColor: 'rgba(34,197,94,0.35)' }} />
+              <div className="bento-corner bento-corner-bl" style={{ borderColor: 'rgba(34,197,94,0.35)' }} />
+              <div className="bento-corner bento-corner-br" style={{ borderColor: 'rgba(34,197,94,0.35)' }} />
+
+              {/* Animation scene */}
+              <div className="relative z-10 mb-8">
+                <div className="zk-scene">
+                  {/* Face wireframe SVG */}
+                  <div className="zk-face">
+                    <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                      {/* Outer face outline */}
+                      <ellipse cx="80" cy="82" rx="38" ry="46"
+                        stroke="rgba(0,245,255,0.6)" strokeWidth="1.5"
+                        className="zk-face-path" />
+                      {/* Eyes */}
+                      <ellipse cx="66" cy="74" rx="6" ry="4"
+                        stroke="rgba(0,245,255,0.5)" strokeWidth="1"
+                        className="zk-face-path" style={{ animationDelay: '0.3s' }} />
+                      <ellipse cx="94" cy="74" rx="6" ry="4"
+                        stroke="rgba(0,245,255,0.5)" strokeWidth="1"
+                        className="zk-face-path" style={{ animationDelay: '0.5s' }} />
+                      {/* Nose */}
+                      <path d="M80 78 L76 90 L80 92 L84 90 Z"
+                        stroke="rgba(0,245,255,0.35)" strokeWidth="1" fill="none"
+                        className="zk-face-path" style={{ animationDelay: '0.7s' }} />
+                      {/* Mouth */}
+                      <path d="M69 102 Q80 110 91 102"
+                        stroke="rgba(0,245,255,0.4)" strokeWidth="1" fill="none"
+                        className="zk-face-path" style={{ animationDelay: '0.9s' }} />
+                      {/* Face grid lines */}
+                      <line x1="80" y1="36" x2="80" y2="128"
+                        stroke="rgba(0,245,255,0.1)" strokeWidth="0.5"
+                        strokeDasharray="3 5" className="zk-face-path" style={{ animationDelay: '1.1s' }} />
+                      <line x1="42" y1="82" x2="118" y2="82"
+                        stroke="rgba(0,245,255,0.1)" strokeWidth="0.5"
+                        strokeDasharray="3 5" className="zk-face-path" style={{ animationDelay: '1.2s' }} />
+                      {/* Corner scan brackets */}
+                      <path d="M30 20 L30 35 M30 20 L45 20" stroke="rgba(0,245,255,0.4)" strokeWidth="1.5" />
+                      <path d="M130 20 L130 35 M130 20 L115 20" stroke="rgba(0,245,255,0.4)" strokeWidth="1.5" />
+                      <path d="M30 140 L30 125 M30 140 L45 140" stroke="rgba(0,245,255,0.4)" strokeWidth="1.5" />
+                      <path d="M130 140 L130 125 M130 140 L115 140" stroke="rgba(0,245,255,0.4)" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                  {/* Scanning sweep line */}
+                  <div className="zk-scan-line" />
+                  {/* Verified checkmark */}
+                  <div className="zk-check">
+                    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+                      {/* Outer circle */}
+                      <circle cx="60" cy="60" r="50" stroke="rgba(34,197,94,0.5)" strokeWidth="1.5"
+                        style={{ filter: 'drop-shadow(0 0 8px rgba(34,197,94,0.6))' }} />
+                      <circle cx="60" cy="60" r="40" stroke="rgba(34,197,94,0.25)" strokeWidth="0.5" />
+                      {/* Checkmark */}
+                      <path d="M32 60 L52 80 L88 40"
+                        stroke="#22c55e" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
+                        className="zk-check-path"
+                        style={{ filter: 'drop-shadow(0 0 8px rgba(34,197,94,0.9))' }} />
+                    </svg>
+                  </div>
+                  {/* "IDENTITY VERIFIED" label */}
+                  <div className="zk-verified-text">IDENTITY VERIFIED</div>
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3">All Routes</h3>
-                <p className="text-slate-400 text-lg leading-relaxed">
-                  Devinagar, Tilottama, Manigram, Sunauli. Every major route in Butwal covered.
+              </div>
+
+              {/* Text */}
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full" style={{ background: '#22c55e', boxShadow: '0 0 8px rgba(34,197,94,0.9)' }} />
+                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#22c55e' }}>ZK-Proof · Privacy-first</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">ZK-Civic Identity</h3>
+                <p className="text-slate-400 leading-relaxed">
+                  A facial recognition wireframe scans and converts into a digital light checkmark. Your identity is verified without ever revealing your private data.
                 </p>
               </div>
             </div>
 
-            {/* Feature 4 */}
-            <div className="group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 border border-slate-700/50 hover:border-green-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-green-500/20 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Clock className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Live Status</h3>
-                <p className="text-slate-400 text-lg leading-relaxed">
-                  Know if you're waiting, picked up, or dropped off. Both drivers and passengers stay informed.
-                </p>
-              </div>
-            </div>
-
-            {/* Feature 5 */}
-            <div className="group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 border border-slate-700/50 hover:border-orange-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/20 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <Smartphone className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">No App Needed</h3>
-                <p className="text-slate-400 text-lg leading-relaxed">
-                  Works on any browser. Phone, tablet, computer. No downloads, no storage hassle.
-                </p>
-              </div>
-            </div>
-
-            {/* Feature 6 */}
-            <div className="group relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 border border-slate-700/50 hover:border-yellow-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-yellow-500/20 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-500/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500"></div>
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <BusFront className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Visual Tracking</h3>
-                <p className="text-slate-400 text-lg leading-relaxed">
-                  Color-coded bus icons 🚌🚎 make finding your ride instant and intuitive.
-                </p>
-              </div>
-            </div>
-          </div>
+          </div>{/* /Bento Grid */}
         </div>
       </div>
 

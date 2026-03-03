@@ -75,6 +75,26 @@ const createLocationIcon = (color: string) => {
     });
 };
 
+/** Animated ripple icon for the driver's own live GPS pin */
+const createDriverRippleIcon = () => L.divIcon({
+    className: '',
+    html: `
+      <div style="position:relative;width:48px;height:48px;">
+        <div style="position:absolute;inset:0;border-radius:50%;background:rgba(6,182,212,0.2);animation:gps-ripple 1.8s ease-out infinite;"></div>
+        <div style="position:absolute;inset:8px;border-radius:50%;background:rgba(6,182,212,0.3);animation:gps-ripple 1.8s ease-out 0.5s infinite;"></div>
+        <div style="position:absolute;inset:16px;border-radius:50%;background:#22d3ee;border:2.5px solid #fff;box-shadow:0 0 12px rgba(34,211,238,0.8);"></div>
+      </div>
+      <style>
+        @keyframes gps-ripple{
+          0%{transform:scale(0.6);opacity:0.9}
+          100%{transform:scale(2.2);opacity:0}
+        }
+      </style>
+    `,
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+});
+
 function MapEvents({ onLocationSelect, role }: { onLocationSelect?: (loc: { lat: number; lng: number }) => void; role: string; }) {
     useMapEvents({
         click(e) {
@@ -112,12 +132,19 @@ function MapControls({ initialCenter, userLocation }: { initialCenter: { lat: nu
         );
     };
 
+    const glassBtn = `w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold text-white
+        border border-white/10 transition-all active:scale-90 select-none`;
+    const glassBg = 'background:rgba(11,14,20,0.75);backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.06)';
     return (
-        <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
-            <button onClick={handleZoomIn} className="rounded-full bg-white shadow-md w-12 h-12 flex items-center justify-center text-xl">+</button>
-            <button onClick={handleZoomOut} className="rounded-full bg-white shadow-md w-12 h-12 flex items-center justify-center text-xl">−</button>
-            <button onClick={handleResetView} className="rounded-full bg-white shadow-md w-12 h-12 flex items-center justify-center text-base">⟳</button>
-            <button onClick={handleLocateUser} disabled={locating} className="rounded-full bg-blue-500 text-white shadow-md w-12 h-12 flex items-center justify-center text-base disabled:opacity-60">{locating ? '…' : '◎'}</button>
+        <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2.5">
+            <button onClick={handleZoomIn} className={glassBtn} style={{ background: 'rgba(11,14,20,0.75)', backdropFilter: 'blur(10px)', boxShadow: '0 4px 20px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.06)' }}>+</button>
+            <button onClick={handleZoomOut} className={glassBtn} style={{ background: 'rgba(11,14,20,0.75)', backdropFilter: 'blur(10px)', boxShadow: '0 4px 20px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.06)' }}>−</button>
+            <button onClick={handleResetView} className={glassBtn} style={{ background: 'rgba(11,14,20,0.75)', backdropFilter: 'blur(10px)', boxShadow: '0 4px 20px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.06)' }}>⟳</button>
+            <button onClick={handleLocateUser} disabled={locating}
+                className={`${glassBtn} disabled:opacity-50`}
+                style={{ background: 'rgba(6,182,212,0.25)', backdropFilter: 'blur(10px)', boxShadow: '0 0 12px rgba(6,182,212,0.3),inset 0 1px 0 rgba(255,255,255,0.1)', border: '1px solid rgba(6,182,212,0.4)' }}>
+                {locating ? '…' : '◎'}
+            </button>
         </div>
     );
 }
@@ -126,24 +153,49 @@ function TrackingControls({ role, isTracking, onToggleTracking, currentPosition 
     if (role === 'admin') return null;
     return (
         <div className="absolute top-4 left-4 z-[1000] flex items-center gap-2">
+            {/* GO ONLINE — glassmorphism pill */}
             <button
                 type="button"
                 onClick={onToggleTracking}
-                className={`px-5 py-3 rounded-full shadow-xl font-bold text-sm flex items-center gap-3 transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-md border border-white/20 ${isTracking ? 'bg-emerald-500/90 text-white shadow-emerald-500/30' : 'bg-slate-800/90 text-white shadow-slate-900/20'}`}
+                className="h-11 px-5 rounded-2xl font-bold text-sm flex items-center gap-2.5 transition-all duration-300 hover:scale-105 active:scale-95 select-none"
+                style={{
+                    background: isTracking ? 'rgba(16,185,129,0.25)' : 'rgba(11,14,20,0.70)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    border: isTracking ? '1px solid rgba(16,185,129,0.45)' : '1px solid rgba(255,255,255,0.10)',
+                    boxShadow: isTracking
+                        ? '0 0 16px rgba(16,185,129,0.30), inset 0 1px 0 rgba(255,255,255,0.08)'
+                        : '0 4px 20px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)',
+                    color: '#fff',
+                }}
             >
-                <div className={`w-3 h-3 rounded-full shadow-inner ${isTracking ? 'bg-white animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)]' : 'bg-slate-400'}`}></div>
-                {isTracking ? 'ONLINE - Tracking' : 'GO ONLINE'}
+                <span className={`w-2.5 h-2.5 rounded-full ${isTracking ? 'bg-emerald-400' : 'bg-slate-500'}`}
+                    style={{
+                        boxShadow: isTracking ? '0 0 8px #34d399' : 'none',
+                        animation: isTracking ? 'pulse 1.5s ease-in-out infinite' : 'none'
+                    }} />
+                {isTracking ? 'ONLINE' : 'GO ONLINE'}
             </button>
+
+            {/* LNG badge — glassmorphism */}
             {currentPosition && (
-                <div className="bg-white/60 backdrop-blur-md px-3 py-2 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/40 text-xs font-mono flex gap-3 items-center">
-                    <div className="flex flex-col items-center">
-                        <span className="text-gray-400 text-[9px] uppercase font-bold tracking-widest">LNG</span>
-                        <span className="font-semibold text-gray-800">{currentPosition[1].toFixed(4)}</span>
-                    </div>
+                <div
+                    className="h-11 px-3 rounded-2xl font-mono text-xs flex items-center gap-2"
+                    style={{
+                        background: 'rgba(11,14,20,0.70)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(6,182,212,0.25)',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)',
+                        color: '#fff',
+                    }}
+                >
+                    <span style={{ color: '#67e8f9', fontSize: '9px', letterSpacing: '0.12em', fontWeight: 700 }}>LNG</span>
+                    <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{currentPosition[1].toFixed(4)}</span>
                 </div>
             )}
         </div>
-    )
+    );
 }
 
 // Error boundary code...
@@ -288,7 +340,15 @@ function LeafletMapInner({ role, onLocationSelect, pickupLocation, dropoffLocati
                 <MapControls initialCenter={center} userLocation={userLocation} />
                 <TrackingControls role={role} isTracking={isTracking} onToggleTracking={toggleTracking} currentPosition={currentPosition} />
 
-                {currentPosition && <Marker position={currentPosition} zIndexOffset={1200}><Popup>You (Live)</Popup></Marker>}
+                {/* Driver/User live pin — ripple effect for driver, plain dot for passenger */}
+                {currentPosition && role === 'driver' && (
+                    <Marker position={currentPosition} icon={createDriverRippleIcon()} zIndexOffset={1200}>
+                        <Popup><b>You (Live)</b><br />GPS Active</Popup>
+                    </Marker>
+                )}
+                {currentPosition && role !== 'driver' && (
+                    <Marker position={currentPosition} zIndexOffset={1200}><Popup>You (Live)</Popup></Marker>
+                )}
 
                 {liveUsers.map((user) => (
                     <LiveUserMarker

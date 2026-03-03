@@ -63,6 +63,7 @@ export interface Driver extends User {
 
 export interface PassengerUser extends User {
   emergencyContact?: string;
+  solanaWallet?: string; // Optional field for Trip Ticket NFTs
 }
 
 export type UserProfile = Driver | PassengerUser;
@@ -122,10 +123,20 @@ export interface Booking {
   pickupLocation: LocationWithTimestamp;
   dropoffLocation: LocationWithTimestamp;
   fare: number;
+  route?: string;
+  vehicleType?: VehicleTypeId;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
   timestamp: Date;
   notes?: string;
   paymentMethod?: 'cash' | 'digital';
+  // NFT Receipt (populated after driver confirms dropoff)
+  receipt?: {
+    mintAddress: string;
+    txSignature: string;
+    explorerLink: string;
+    status: 'minted';
+    mintedAt: string;
+  };
   // Booking timeout fields
   reservationExpiresAt?: Date;     // 10-minute timeout
   isExpired: boolean;

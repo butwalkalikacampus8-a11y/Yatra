@@ -40,6 +40,7 @@ const passengerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   emergencyContact: z.string().min(10, 'Emergency contact must be at least 10 digits').optional().or(z.literal('')),
+  solanaWallet: z.string().optional().or(z.literal('')),
 });
 
 type DriverFormData = z.infer<typeof driverSchema>;
@@ -163,6 +164,7 @@ function ProfilePageContent() {
       name: '',
       email: '',
       emergencyContact: '',
+      solanaWallet: '',
     },
   });
 
@@ -380,6 +382,7 @@ function ProfilePageContent() {
             name: data.name,
             email: data.email,
             emergencyContact: data.emergencyContact,
+            solanaWallet: data.solanaWallet,
           },
         }),
       });
@@ -409,6 +412,7 @@ function ProfilePageContent() {
           email: data.email || null,
           role: 'passenger',
           emergencyContact: data.emergencyContact || null,
+          solanaWallet: data.solanaWallet || null,
         });
       } catch (err) {
         console.warn('Passenger RTDB initialized by backend or failed:', err);
@@ -906,6 +910,27 @@ function ProfilePageContent() {
                         {passengerForm.formState.errors.emergencyContact && (
                           <p className="text-sm text-red-400">
                             {passengerForm.formState.errors.emergencyContact.message}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Solana Wallet */}
+                      <div className="space-y-3">
+                        <Label htmlFor="solanaWallet" className="text-slate-300 text-sm font-medium">
+                          Solana Wallet Address <span className="text-slate-500 text-xs">(Optional, for Trip Tickets)</span>
+                        </Label>
+                        <div className="relative">
+                          <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                          <Input
+                            id="solanaWallet"
+                            {...passengerForm.register('solanaWallet')}
+                            placeholder="e.g., 9xQe... (Phantom Wallet)"
+                            className="h-14 pl-12 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:border-cyan-500 focus:ring-cyan-500/20"
+                          />
+                        </div>
+                        {passengerForm.formState.errors.solanaWallet && (
+                          <p className="text-sm text-red-400">
+                            {passengerForm.formState.errors.solanaWallet.message}
                           </p>
                         )}
                       </div>

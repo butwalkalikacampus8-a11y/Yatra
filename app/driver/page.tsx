@@ -453,7 +453,8 @@ export default function DriverDashboard() {
     );
   };
 
-  const handlePassengerDropoff = (passengerId: string) => {
+  const handlePassengerDropoff = async (passengerId: string) => {
+    // 1. Update UI state immediately (optimistic update)
     setPassengers(prev =>
       prev.map(passenger =>
         passenger.id === passengerId
@@ -461,6 +462,73 @@ export default function DriverDashboard() {
           : passenger
       )
     );
+
+    // 2. Fetch Passenger Data & Trigger Minting
+    try {
+      if (!selectedBus || !userData) return;
+
+      toast({
+        title: 'Minting Receipt...',
+        description: 'Generating Soulbound Trip Ticket for passenger.',
+      });
+
+      // Firebase lookup for passenger's Solana wallet
+      const { getDatabase, ref, get } = await import('firebase/database');
+      const { getFirebaseApp } = await import('@/lib/firebase');
+      const db = getDatabase(getFirebaseApp());
+      const passengerRef = ref(db, `users/${passengerId}`);
+      const passengerSnap = await get(passengerRef);
+
+      if (!passengerSnap.exists()) return;
+
+      const passengerData = passengerSnap.val();
+      const passengerWallet = passengerData.solanaWallet;
+
+      if (!passengerWallet) {
+        console.log(`[Trip Ticket] Passenger ${passengerId} has no linked Solana Wallet.`);
+        return; // Silently exit if no wallet
+      }
+
+      // Find the specific booking ID. 
+      // In this app, Passenger objects in the state represent active bookings.
+      // We pass the raw passenger ID as the booking ID placeholder if we don't have the exact booking ID handy,
+      // though typically the bookings listener might give us the true booking ID. 
+      // The `passengers` state actually stores the `booking.id` inside `passenger.id` from subscribeToBookings.
+      const bookingId = passengerId;
+
+      const payload = {
+        passengerId: passengerData.id || passengerId,
+        passengerWallet,
+        bookingId,
+        fare: 75, // Static fare for demo based on PassengerList estimated revenue
+        route: selectedBus.route,
+        driverName: selectedBus.driverName,
+      };
+
+      // Call internal Next.js API route to perform the minting securely
+      fetch('/api/solana/mint-ticket', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      }).then(async (res) => {
+        const data = await res.json();
+        if (data.success) {
+          toast({
+            title: 'Trip Ticket Minted! 🎉',
+            description: `Sent to ${passengerWallet.slice(0, 4)}...${passengerWallet.slice(-4)}`,
+          });
+        } else {
+          console.error('[Trip Ticket] Minting API Error:', data.error);
+        }
+      }).catch(err => {
+        console.error('[Trip Ticket] Fetch Error:', err);
+      });
+
+    } catch (error) {
+      console.error('[Trip Ticket] Unexpected error during dropoff flow:', error);
+    }
   };
 
   const handleReportEmergency = async (type: 'accident' | 'breakdown') => {
@@ -542,67 +610,99 @@ export default function DriverDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
-      {/* 1. Header (Sticky Top) */}
-      <div className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800 p-4">
-        <div className="flex items-center justify-between">
-          {/* Brand */}
+    <div className="min-h-screen flex flex-col" style={{ background: '#0B0E14', overflowY: 'scroll', scrollSnapType: 'y mandatory', height: '100dvh' }}>
+      {/* ── 1. Cockpit Header ── */}
+      <div className="sticky top-0 z-50 border-b border-slate-800/60 overflow-hidden"
+        style={{ background: 'rgba(11,14,20,0.92)', backdropFilter: 'blur(20px)' }}
+      >
+        {/* Animated scanning line */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-70"
+            style={{ animation: 'scanline 2.8s linear infinite', width: '60%' }} />
+        </div>
+
+        <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+          {/* चालक Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-              <BusIcon className="w-4 h-4 text-white" />
+            {/* Shield icon with glow */}
+            <div className="relative w-9 h-9 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-cyan-500/10 blur-md" />
+              <svg viewBox="0 0 36 36" className="w-9 h-9 relative">
+                <path d="M18 3 L33 9 L33 18 C33 26 26 32 18 34 C10 32 3 26 3 18 L3 9 Z"
+                  fill="none" stroke="#06b6d4" strokeWidth="1.5" opacity="0.6">
+                  <animateTransform attributeName="transform" type="rotate"
+                    from="0 18 18" to="360 18 18" dur="8s" repeatCount="indefinite" />
+                </path>
+                <path d="M18 6 L30 11 L30 18 C30 24.5 25 29.5 18 31.5 C11 29.5 6 24.5 6 18 L6 11 Z"
+                  fill="rgba(6,182,212,0.07)" stroke="#22d3ee" strokeWidth="1" />
+                <path d="M13 18 L16.5 21.5 L23 15" stroke="#22d3ee" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
             </div>
+
             <div>
-              <h1 className="text-sm font-black text-white tracking-tight leading-none">
-                Driver Console
+              <h1
+                className="text-[26px] font-extrabold leading-none"
+                style={{
+                  fontFamily: 'var(--font-mukta), sans-serif',
+                  background: 'linear-gradient(135deg, #67e8f9 0%, #22d3ee 40%, #ffffff 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  filter: 'drop-shadow(0 0 12px rgba(34,211,238,0.5))',
+                }}
+              >
+                चालक
               </h1>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`}></span>
-                <span className="text-[10px] text-slate-300 font-medium">
-                  {isOnline ? 'Online' : 'Offline'}
+                <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-cyan-400' : 'bg-slate-600'}`}
+                  style={{
+                    boxShadow: isOnline ? '0 0 6px #22d3ee' : 'none',
+                    animation: isOnline ? 'pulse 1.5s ease-in-out infinite' : 'none'
+                  }} />
+                <span className="text-[10px] font-bold tracking-widest"
+                  style={{ color: isOnline ? '#67e8f9' : '#64748b' }}>
+                  {isOnline ? 'ONLINE' : 'OFFLINE'}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Controls */}
+          {/* Right Controls */}
           <div className="flex items-center gap-2">
-            {/* SOS Button */}
+            {/* SOS Button with rhythmic red glow */}
             <Dialog>
               <DialogTrigger asChild>
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="h-9 px-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/50 animate-pulse"
+                  className="h-10 px-4 font-black tracking-widest text-sm rounded-xl border border-red-500/60"
+                  style={{
+                    background: 'rgba(239,68,68,0.12)',
+                    color: '#f87171',
+                    animation: 'sos-pulse 2s ease-in-out infinite',
+                    boxShadow: '0 0 0 0 rgba(239,68,68,0.4)',
+                  }}
                 >
                   SOS
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+              <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md rounded-2xl">
                 <DialogHeader>
-                  <DialogTitle className="text-red-500 flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5" />
-                    Emergency Report
+                  <DialogTitle className="text-red-400 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5" /> Emergency Report
                   </DialogTitle>
                   <DialogDescription className="text-slate-400">
-                    This will immediately alert the admin team. Please use only in emergencies.
+                    This will immediately alert the admin team. Use only in emergencies.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-4 py-4">
-                  <Button
-                    variant="outline"
-                    className="h-24 flex flex-col gap-2 border-slate-700 hover:bg-red-950 hover:border-red-500 hover:text-red-500"
-                    onClick={() => handleReportEmergency('accident')}
-                  >
-                    <Car className="w-8 h-8" />
-                    Accident
+                  <Button variant="outline" className="h-24 flex flex-col gap-2 border-slate-700 hover:bg-red-950 hover:border-red-500 hover:text-red-400 rounded-xl"
+                    onClick={() => handleReportEmergency('accident')}>
+                    <Car className="w-8 h-8" /> Accident
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="h-24 flex flex-col gap-2 border-slate-700 hover:bg-orange-950 hover:border-orange-500 hover:text-orange-500"
-                    onClick={() => handleReportEmergency('breakdown')}
-                  >
-                    <Wrench className="w-8 h-8" />
-                    Breakdown
+                  <Button variant="outline" className="h-24 flex flex-col gap-2 border-slate-700 hover:bg-orange-950 hover:border-orange-500 hover:text-orange-400 rounded-xl"
+                    onClick={() => handleReportEmergency('breakdown')}>
+                    <Wrench className="w-8 h-8" /> Breakdown
                   </Button>
                 </div>
                 <DialogFooter>
@@ -613,44 +713,38 @@ export default function DriverDashboard() {
               </DialogContent>
             </Dialog>
 
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md border transition-all ${locationEnabled
-              ? 'bg-cyan-500/10 border-cyan-500/30'
-              : 'bg-slate-900/50 border-slate-700/50'}`}>
-              <Switch
-                checked={locationEnabled}
-                onCheckedChange={handleLocationToggle}
-                className="scale-75 data-[state=checked]:bg-cyan-500"
-              />
+            {/* GPS Toggle */}
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl backdrop-blur border transition-all ${locationEnabled ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-900/50 border-slate-700/50'}`}>
+              <Switch checked={locationEnabled} onCheckedChange={handleLocationToggle}
+                className="scale-75 data-[state=checked]:bg-cyan-500" />
               <MapPin className={`w-3 h-3 ${locationEnabled ? 'text-cyan-400' : 'text-slate-400'}`} />
               {locationEnabled && selectedBus && (
                 <div className="flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${lastFirebaseUpdate && (Date.now() - lastFirebaseUpdate.getTime()) < 10000
-                    ? 'bg-green-500 animate-pulse'
-                    : 'bg-slate-500'}`}></span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${lastFirebaseUpdate && (Date.now() - lastFirebaseUpdate.getTime()) < 10000 ? 'bg-green-400 animate-pulse' : 'bg-slate-500'}`} />
                   <span className="text-[10px] text-slate-300 font-medium">
-                    {lastFirebaseUpdate
-                      ? `${Math.floor((Date.now() - lastFirebaseUpdate.getTime()) / 1000)}s ago`
-                      : 'Waiting...'}
+                    {lastFirebaseUpdate ? `${Math.floor((Date.now() - lastFirebaseUpdate.getTime()) / 1000)}s` : '...'}
                   </span>
                 </div>
               )}
             </div>
 
-            <Button
-              variant="ghost"
-              onClick={signOut}
-              size="icon"
-              className="w-9 h-9 rounded-full bg-slate-900/50 border border-slate-700/50 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            >
+            {/* Sign Out */}
+            <Button variant="ghost" onClick={signOut} size="icon"
+              className="w-9 h-9 rounded-full bg-slate-900/50 border border-slate-700/50 text-red-400 hover:text-red-300 hover:bg-red-500/10">
               <span className="sr-only">Sign Out</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" x2="9" y1="12" y2="12" />
+              </svg>
             </Button>
           </div>
         </div>
       </div>
 
-      {/* 2. Map Section (Priority View) */}
-      <div className="relative w-full h-[60vh] shrink-0 border-b border-slate-800">
+      {/* ── 2. Map Section ── */}
+      <div className="relative w-full shrink-0 border-b border-slate-800/60"
+        style={{ height: '100dvh', scrollSnapAlign: 'start' }}>
         <MapWrapper
           role="driver"
           buses={buses}
@@ -662,70 +756,96 @@ export default function DriverDashboard() {
         />
       </div>
 
-      {/* 3. Scrollable Content (Below Map) */}
-      <div className="flex-1 bg-slate-950 p-4 space-y-6">
-        {/* Bus Details & Controls */}
+      {/* ── 3. Scrollable Cockpit Sections ── */}
+      <div className="p-4 space-y-4" style={{ background: '#0B0E14', scrollSnapAlign: 'start', minHeight: '100dvh' }}>
+
+        {/* Bus Controls Section */}
         {selectedBus && (
-          <div className="space-y-2">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Settings className="w-5 h-5 text-cyan-400" />
-              Bus Controls
-              {/* Dev Trigger for Accident */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-6 text-[10px] text-slate-600 hover:text-red-500"
-                onClick={triggerManualTest}
-              >
-                Test Crash
-              </Button>
-            </h2>
-            <DriverPanel
-              bus={selectedBus}
-              onLocationToggle={handleLocationToggle}
-              locationEnabled={locationEnabled}
-              onAddOfflinePassenger={handleAddOfflinePassenger}
-              onRemoveOfflinePassenger={handleRemoveOfflinePassenger}
-            />
-            {userData && (
-              <div className="mt-4">
-                <VerificationPanel
-                  driver={userData as Driver}
-                  onVerificationSuccess={() => {
-                    // Force a re-render or refetch if needed. The real-time listener will catch it eventually.
-                  }}
-                />
+          <section className="rounded-2xl border border-cyan-500/20 overflow-hidden"
+            style={{ boxShadow: '0 0 0 1px rgba(6,182,212,0.1), inset 0 0 40px rgba(6,182,212,0.03)' }}>
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800/60"
+              style={{ background: 'rgba(6,182,212,0.05)' }}>
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs font-bold tracking-widest text-cyan-300 uppercase">Vehicle Status</span>
               </div>
-            )}
-          </div>
+              <Button variant="ghost" size="sm" className="h-5 text-[10px] text-slate-600 hover:text-red-500 px-2"
+                onClick={triggerManualTest}>Test Crash</Button>
+            </div>
+            <div className="p-4">
+              <DriverPanel
+                bus={selectedBus}
+                onLocationToggle={handleLocationToggle}
+                locationEnabled={locationEnabled}
+                onAddOfflinePassenger={handleAddOfflinePassenger}
+                onRemoveOfflinePassenger={handleRemoveOfflinePassenger}
+              />
+            </div>
+          </section>
         )}
 
-        {/* Passenger List */}
-        <div className="space-y-2">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-purple-400" />
-            Passengers
-            <Badge variant="secondary" className="ml-auto bg-slate-800 text-slate-300">
-              {passengers.length}
-            </Badge>
-          </h2>
-          <PassengerList
-            passengers={passengers}
-            selectedBus={selectedBus}
-            onPassengerPickup={handlePassengerPickup}
-            onPassengerDropoff={handlePassengerDropoff}
-          />
-        </div>
+        {/* ZK Identity Section */}
+        {userData && (
+          <section className="rounded-2xl border border-blue-500/20 overflow-hidden"
+            style={{ boxShadow: '0 0 0 1px rgba(59,130,246,0.1), inset 0 0 40px rgba(59,130,246,0.03)' }}>
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-800/60"
+              style={{ background: 'rgba(59,130,246,0.05)' }}>
+              <Settings className="w-4 h-4 text-blue-400" />
+              <span className="text-xs font-bold tracking-widest text-blue-300 uppercase">Security Clearance</span>
+            </div>
+            <div className="p-4">
+              <VerificationPanel
+                driver={userData as Driver}
+                onVerificationSuccess={() => { }}
+              />
+            </div>
+          </section>
+        )}
 
-        {/* Bottom Padding */}
-        <div className="h-8"></div>
+        {/* Passenger Manifest */}
+        <section className="rounded-2xl border border-purple-500/20 overflow-hidden"
+          style={{ boxShadow: '0 0 0 1px rgba(168,85,247,0.1), inset 0 0 40px rgba(168,85,247,0.03)' }}>
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800/60"
+            style={{ background: 'rgba(168,85,247,0.05)' }}>
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-bold tracking-widest text-purple-300 uppercase">Passenger Manifest</span>
+            </div>
+            <span className="text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full px-2.5 py-0.5">
+              {passengers.length}
+            </span>
+          </div>
+          <div className="p-4">
+            <PassengerList
+              passengers={passengers}
+              selectedBus={selectedBus}
+              onPassengerPickup={handlePassengerPickup}
+              onPassengerDropoff={handlePassengerDropoff}
+            />
+          </div>
+        </section>
+
+        <div className="h-8" />
       </div>
-      {/* Automated Accident Alert Popup */}
-      <AccidentAlert
-        isOpen={isAccidentDetected}
-        onConfirm={handleAccidentConfirm}
-        onCancel={handleAccidentCancel}
-      />
+
+      {/* Accident Alert Popup */}
+      <AccidentAlert isOpen={isAccidentDetected} onConfirm={handleAccidentConfirm} onCancel={handleAccidentCancel} />
+
+      {/* Global cockpit keyframes */}
+      <style jsx global>{`
+        @keyframes scanline {
+          0%   { transform: translateX(-60%); }
+          100% { transform: translateX(200%); }
+        }
+        @keyframes sos-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+          50%       { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+        }
+        @keyframes shield-spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
