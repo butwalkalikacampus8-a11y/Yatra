@@ -107,9 +107,37 @@ export default function YatraHero({
                     <span className="yatra-badge-chip">BETA</span>
                 </div>
 
-                {/* YATRA Typography */}
+                {/* YATRA Typography — Custom SVG Logotype (Cyan → Purple) */}
                 <div className={`text-center transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                    <h1 className="yatra-title">YATRA</h1>
+                    <h1 className="inline-block w-full max-w-[min(90vw,420px)]" aria-label="YATRA">
+                        <svg
+                            viewBox="0 0 320 80"
+                            className="w-full max-w-[min(90vw,420px)] h-auto mx-auto"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <defs>
+                                <linearGradient id="yatra-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#00F2FF" />
+                                    <stop offset="50%" stopColor="#22d3ee" />
+                                    <stop offset="100%" stopColor="#7000FF" />
+                                </linearGradient>
+                            </defs>
+                            <text
+                                x="50%"
+                                y="62"
+                                textAnchor="middle"
+                                fontSize="72"
+                                fontWeight="900"
+                                letterSpacing="-0.03em"
+                                fill="url(#yatra-gradient)"
+                                style={{ filter: 'drop-shadow(0 0 40px rgba(0, 242, 255, 0.35))' }}
+                                fontFamily="var(--font-outfit), system-ui, sans-serif"
+                            >
+                                YATRA
+                            </text>
+                        </svg>
+                    </h1>
                     <p className="yatra-subtitle">Nepal's Transit, Tokenized.</p>
                     <p className="yatra-body mt-3">
                         Real-time tracking meets Solana-powered security.{' '}

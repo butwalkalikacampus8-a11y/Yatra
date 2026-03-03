@@ -125,7 +125,7 @@ export default function DetailedBookingModal() {
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-[440px] bg-slate-950 border border-slate-800/80 text-white rounded-3xl p-6 shadow-2xl shadow-black/60">
+            <DialogContent className="sm:max-w-[440px] bg-slate-950/90 backdrop-blur-md border border-slate-800/80 text-white rounded-3xl p-6 shadow-2xl shadow-black/60">
                 <DialogHeader className="mb-4">
                     <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
                         {step === 1 && (<><MapPin className="w-5 h-5 text-cyan-400" /> Choose Destination</>)}

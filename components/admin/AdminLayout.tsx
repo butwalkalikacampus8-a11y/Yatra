@@ -81,7 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Sidebar */}
             <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:shrink-0
+        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900/90 backdrop-blur-md border-r border-slate-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         ${activeAlert ? 'mt-16' : ''} 
       `}>
@@ -129,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Main Content */}
             <main className={`flex-1 flex flex-col min-w-0 overflow-hidden ${activeAlert ? 'mt-16' : ''}`}>
                 {/* Header */}
-                <header className="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-xl flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
+                <header className="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
                     <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
                         <Menu className="w-5 h-5" />
                     </Button>

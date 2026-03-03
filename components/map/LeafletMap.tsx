@@ -333,7 +333,15 @@ function LeafletMapInner({ role, onLocationSelect, pickupLocation, dropoffLocati
 
     return (
         <div className="relative w-full h-full min-h-[400px]">
-            <MapContainer center={[center.lat, center.lng]} zoom={15} className="w-full h-full" zoomControl={false}>
+            <MapContainer
+                center={[center.lat, center.lng]}
+                zoom={15}
+                className="w-full h-full"
+                zoomControl={false}
+                preferCanvas={true}
+                scrollWheelZoom={false}
+                touchZoom={false}
+            >
                 <MapEvents onLocationSelect={onLocationSelect} role={role} />
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <MapUpdater center={center} selectedUserId={selectedUser?.id} userLocation={userLocation} />

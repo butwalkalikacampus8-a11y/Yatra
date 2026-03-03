@@ -6,13 +6,28 @@ import { Button } from '@/components/ui/button';
 import { BusFront, Users, MapPin, Clock, Navigation, Smartphone, ArrowRight, Zap, Star } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import YatraHero from '@/components/YatraHero';
+import { subscribeToBuses } from '@/lib/firebaseDb';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { LottieAnimation } from '@/components/landing/LottieAnimation';
 
 export default function Home() {
   const { currentUser, signOut } = useAuth();
   const [isClient, setIsClient] = useState(false);
+  const [onlineBuses, setOnlineBuses] = useState<number | null>(null);
 
   useEffect(() => {
     setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToBuses((buses) => {
+      const activeCount = buses.filter((bus) => (bus as any).isActive || (bus as any).locationSharingEnabled).length;
+      setOnlineBuses(activeCount);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const handleRoleSwitch = async (role: 'driver' | 'passenger') => {
@@ -23,7 +38,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen premium-dark-web3">
 
       {/* ═══ HERO — Hyper-Modern Transit Cockpit ═══ */}
       <YatraHero
@@ -31,8 +46,10 @@ export default function Home() {
         onRoleSwitch={handleRoleSwitch}
       />
 
-
-
+      {/* Flow light-streak guiding to next section */}
+      <div className="flow-streak-wrapper">
+        <div className="flow-streak-line" />
+      </div>
 
       {/* ═══ FEATURES — Animated Bento Cards ═══ */}
       <div className="relative bg-slate-950 py-24 md:py-32 overflow-hidden">
@@ -51,7 +68,7 @@ export default function Home() {
               </span>
             </div>
             <h2 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tight">
-              Built for Nepal's Future
+              Sovereign Transit. Engineered for Nepal.
             </h2>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto">
               Three pillars of a transit revolution — powered by satellite, blockchain, and cryptographic identity.
@@ -62,6 +79,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* ── Card 1: Real-Time GPS ── */}
+            <ScrollReveal delay={0}>
             <div className="bento-card p-8">
               {/* Corner brackets */}
               <div className="bento-corner bento-corner-tl" />
@@ -69,8 +87,11 @@ export default function Home() {
               <div className="bento-corner bento-corner-bl" />
               <div className="bento-corner bento-corner-br" />
 
-              {/* Animation scene */}
-              <div className="relative z-10 mb-8">
+              {/* Animation scene — Lottie or fallback */}
+              <div className="relative z-10 mb-8 flex justify-center">
+                <LottieAnimation
+                  type="gps"
+                  fallback={
                 <div className="gps-scene">
                   {/* Orbit ring with satellite */}
                   <div className="gps-orbit">
@@ -85,6 +106,8 @@ export default function Home() {
                   {/* Extra concentric rings */}
                   <div className="absolute inset-0 rounded-full border border-cyan-400/10 scale-75 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style={{ width: '50%', height: '50%', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '1px solid rgba(0,245,255,0.08)' }} />
                 </div>
+                  }
+                />
               </div>
 
               {/* Text */}
@@ -99,16 +122,21 @@ export default function Home() {
                 </p>
               </div>
             </div>
+            </ScrollReveal>
 
             {/* ── Card 2: Solana Integration ── */}
+            <ScrollReveal delay={0.1}>
             <div className="bento-card p-8" style={{ background: 'linear-gradient(135deg, rgba(10, 5, 30, 0.95) 0%, rgba(15, 5, 40, 0.90) 100%)', borderColor: 'rgba(153, 69, 255, 0.15)' }}>
               <div className="bento-corner bento-corner-tl" style={{ borderColor: 'rgba(153,69,255,0.35)' }} />
               <div className="bento-corner bento-corner-tr" style={{ borderColor: 'rgba(153,69,255,0.35)' }} />
               <div className="bento-corner bento-corner-bl" style={{ borderColor: 'rgba(153,69,255,0.35)' }} />
               <div className="bento-corner bento-corner-br" style={{ borderColor: 'rgba(153,69,255,0.35)' }} />
 
-              {/* Animation scene */}
-              <div className="relative z-10 mb-8">
+              {/* Animation scene — Lottie or fallback */}
+              <div className="relative z-10 mb-8 flex justify-center">
+                <LottieAnimation
+                  type="blockchain"
+                  fallback={
                 <div className="solana-scene">
                   {/* Holographic shield rings */}
                   <div className="solana-shield">
@@ -151,6 +179,8 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
+                  }
+                />
               </div>
 
               {/* Text */}
@@ -165,8 +195,10 @@ export default function Home() {
                 </p>
               </div>
             </div>
+            </ScrollReveal>
 
             {/* ── Card 3: ZK-Civic Identity ── */}
+            <ScrollReveal delay={0.2}>
             <div className="bento-card p-8" style={{ background: 'linear-gradient(135deg, rgba(5, 20, 10, 0.95) 0%, rgba(5, 25, 15, 0.90) 100%)', borderColor: 'rgba(34, 197, 94, 0.15)' }}>
               <div className="bento-corner bento-corner-tl" style={{ borderColor: 'rgba(34,197,94,0.35)' }} />
               <div className="bento-corner bento-corner-tr" style={{ borderColor: 'rgba(34,197,94,0.35)' }} />
@@ -245,9 +277,15 @@ export default function Home() {
                 </p>
               </div>
             </div>
+            </ScrollReveal>
 
           </div>{/* /Bento Grid */}
         </div>
+      </div>
+
+      {/* Flow light-streak between sections */}
+      <div className="flow-streak-wrapper">
+        <div className="flow-streak-line" />
       </div>
 
       {/* How It Works */}
@@ -255,7 +293,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20">
             <h2 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tight">
-              Simple as 1-2-3
+              The Yatra Ecosystem: Connect. Authenticate. Move.
             </h2>
             <p className="text-xl text-slate-400">
               Three steps to never miss your bus again
@@ -328,6 +366,11 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Flow light-streak into final CTA */}
+      <div className="flow-streak-wrapper">
+        <div className="flow-streak-line" />
       </div>
 
       {/* Final CTA */}
@@ -407,20 +450,37 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <div className="relative bg-slate-950 border-t border-slate-800 py-12">
+      <div className="relative bg-slate-950 border-t border-slate-800/60 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                <BusFront className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <div className="text-lg font-bold text-white">VehicleTracker Nepal</div>
-                <div className="text-sm text-slate-500">Nepal's Vehicle Tracking System</div>
+              <div className="relative inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-slate-900/80 border border-cyan-500/30 shadow-[0_0_30px_rgba(56,189,248,0.30)]">
+                <span className="relative inline-flex h-3 w-3">
+                  <span
+                    className={`absolute inset-0 rounded-full ${
+                      onlineBuses && onlineBuses > 0 ? 'bg-emerald-400' : 'bg-slate-600'
+                    }`}
+                    style={{
+                      boxShadow:
+                        onlineBuses && onlineBuses > 0
+                          ? '0 0 10px rgba(52,211,153,0.95)'
+                          : '0 0 0 rgba(15,23,42,0)',
+                    }}
+                  />
+                  {onlineBuses && onlineBuses > 0 && (
+                    <span className="absolute inset-0 rounded-full bg-emerald-400/60 animate-ping" />
+                  )}
+                </span>
+                <span className="text-[11px] font-semibold tracking-[0.22em] uppercase text-slate-200">
+                  Live in Nepal
+                </span>
+                <span className="tech-mono text-sm text-cyan-300">
+                  {onlineBuses === null ? '···' : `${onlineBuses} buses online`}
+                </span>
               </div>
             </div>
-            <div className="text-sm text-slate-500">
-              © 2025 VehicleTracker Nepal. Made By अपरिचित..
+            <div className="text-xs text-slate-600">
+              Real-time counts from active drivers across Nepal.
             </div>
           </div>
         </div>

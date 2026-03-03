@@ -590,7 +590,7 @@ export default function PassengerDashboard() {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col">
       {/* 1. Header (Sticky Top) */}
-      <div className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/60 px-4 pt-4 pb-3">
+      <div className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 px-4 pt-4 pb-3">
         <div className="flex items-center justify-between gap-4">
           {/* Left: Animated Brand */}
           <div className="flex items-center gap-3">

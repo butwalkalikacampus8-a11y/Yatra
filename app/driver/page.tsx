@@ -209,11 +209,20 @@ export default function DriverDashboard() {
     }
 
     const handleGeoError = (error: GeolocationPositionError | any) => {
+      // eslint-disable-next-line no-console
+      console.log('[DRIVER] watchPosition Position Error:', {
+        code: error?.code,
+        message: error?.message,
+      });
+
       // Avoid spamming toasts; show a friendly message once
       if (!hasGeolocationError) {
         let message = 'Unable to access your location. Please check your browser permissions.';
         if (error?.code === 1) {
           message = 'Location permission was denied. Turn it on in your browser settings to share your live location.';
+        } else if (error?.code === 2) {
+          // Position unavailable or low-accuracy GPS
+          message = 'Please enable high-accuracy GPS.';
         }
 
         toast({

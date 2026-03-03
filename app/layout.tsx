@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit, Geist_Mono, Mukta } from "next/font/google";
+import { Outfit, JetBrains_Mono, Mukta } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
@@ -17,8 +17,8 @@ const mukta = Mukta({
   weight: ["400", "600", "700", "800"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   title: "YATRA",
   description: "Track your bus in real-time, book seats, and share your ride.",
   manifest: "/manifest.json",
-  themeColor: "#0f172a",
+  themeColor: "#05070A",
 };
 
 export default function RootLayout({
@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${outfit.variable} ${geistMono.variable} ${mukta.variable} antialiased font-sans`}
+        className={`${outfit.variable} ${jetbrainsMono.variable} ${mukta.variable} antialiased font-sans`}
       >
         <AuthProvider>
           {children}
