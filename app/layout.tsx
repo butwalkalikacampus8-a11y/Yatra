@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import OfflineBanner from "@/components/shared/OfflineBanner";
+import PwaBootstrap from "@/components/shared/PwaBootstrap";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -27,6 +28,19 @@ export const metadata: Metadata = {
   description: "Track your bus in real-time, book seats, and share your ride.",
   manifest: "/manifest.json",
   themeColor: "#05070A",
+  applicationName: "Yatra",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Yatra",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/pwa-192.svg", type: "image/svg+xml" },
+      { url: "/icons/pwa-512.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/icons/pwa-192.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
@@ -40,6 +54,7 @@ export default function RootLayout({
         className={`${outfit.variable} ${jetbrainsMono.variable} ${mukta.variable} antialiased font-sans`}
       >
         <AuthProvider>
+          <PwaBootstrap />
           {children}
           <Toaster />
           <SonnerToaster richColors position="top-center" duration={5000} />

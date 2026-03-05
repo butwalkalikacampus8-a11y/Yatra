@@ -212,7 +212,16 @@ class MapErrorBoundary extends Component<{ children: ReactNode, onRetry?: () => 
     }
 }
 
-function LeafletMapInner({ role, onLocationSelect, pickupLocation, dropoffLocation, userLocation, buses = [], requestStatus }: LeafletMapProps) {
+function LeafletMapInner({
+    role,
+    onLocationSelect,
+    pickupLocation,
+    dropoffLocation,
+    userLocation,
+    buses = [],
+    onBusSelect,
+    requestStatus
+}: LeafletMapProps) {
     const { currentUser } = useAuth(); // FIX: Access real UID
     const [mounted, setMounted] = useState(false);
     const [isMapReady, setIsMapReady] = useState(false); // Wait for GPS
@@ -360,9 +369,15 @@ function LeafletMapInner({ role, onLocationSelect, pickupLocation, dropoffLocati
 
                 {liveUsers.map((user) => (
                     <LiveUserMarker
-                        key={`${user.id}-${user.timestamp}`}
+                        key={user.id}
                         user={user}
-                        onClick={() => setSelectedUser(user)}
+                        onClick={() => {
+                            setSelectedUser(user);
+                            if (role === 'passenger' && user.role === 'driver' && onBusSelect) {
+                                const bus = buses.find((candidate) => candidate.id === user.id);
+                                if (bus) onBusSelect(bus);
+                            }
+                        }}
                         onPopupClose={() => setSelectedUser(null)}
                         routeInfo={selectedUser?.id === user.id ? routeInfo : null}
                     />

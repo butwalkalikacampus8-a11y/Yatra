@@ -1,4 +1,4 @@
-import { getDatabase, ref, set, update, onValue, push, get } from 'firebase/database';
+import { getDatabase, ref, set, update, onValue, push, get, onDisconnect } from 'firebase/database';
 import { getFirebaseApp } from './firebase';
 import { Bus, Booking, Location, LiveUser } from './types';
 
@@ -72,6 +72,71 @@ export const updateBusLocation = async (
     });
 };
 
+export const setDriverOffline = async (driverId: string) => {
+    const db = getDb();
+    const nowIso = new Date().toISOString();
+    const locationRef = ref(db, `locations/${driverId}`);
+    const busRef = ref(db, `buses/${driverId}`);
+
+    await Promise.all([
+        update(locationRef, {
+            id: driverId,
+            role: 'driver',
+            isOnline: false,
+            timestamp: nowIso,
+        }),
+        update(busRef, {
+            isActive: false,
+            locationSharingEnabled: false,
+        }),
+    ]);
+};
+
+/**
+ * Registers RTDB presence hooks for a driver so dead-zone disconnects immediately
+ * mark the bus offline via onDisconnect().
+ *
+ * Return value is an async cleanup function that cancels onDisconnect hooks.
+ */
+export const attachDriverPresence = (driverId: string) => {
+    const db = getDb();
+    const connectedRef = ref(db, '.info/connected');
+    const locationRef = ref(db, `locations/${driverId}`);
+    const busRef = ref(db, `buses/${driverId}`);
+
+    const unsubscribe = onValue(connectedRef, async (snapshot) => {
+        if (snapshot.val() !== true) return;
+
+        try {
+            await Promise.all([
+                onDisconnect(locationRef).update({
+                    id: driverId,
+                    role: 'driver',
+                    isOnline: false,
+                }),
+                onDisconnect(busRef).update({
+                    isActive: false,
+                    locationSharingEnabled: false,
+                }),
+                update(busRef, {
+                    isActive: true,
+                    locationSharingEnabled: true,
+                }),
+            ]);
+        } catch (error) {
+            console.error('[Presence] Failed to attach onDisconnect handlers:', error);
+        }
+    });
+
+    return async () => {
+        unsubscribe();
+        await Promise.allSettled([
+            onDisconnect(locationRef).cancel(),
+            onDisconnect(busRef).cancel(),
+        ]);
+    };
+};
+
 /**
  * Update location sharing status for a bus
  * @param busId - Bus ID
@@ -80,10 +145,55 @@ export const updateBusLocation = async (
 export const updateLocationSharingStatus = async (busId: string, enabled: boolean) => {
     const db = getDb();
     const busRef = ref(db, `buses/${busId}`);
-    await update(busRef, {
+    const updates: Record<string, boolean> = {
         locationSharingEnabled: enabled,
         isActive: enabled,
+    };
+
+    await update(busRef, updates);
+
+    if (!enabled) {
+        const locationRef = ref(db, `locations/${busId}`);
+        await update(locationRef, {
+            id: busId,
+            role: 'driver',
+            isOnline: false,
+            timestamp: new Date().toISOString(),
+        });
+    }
+};
+
+export interface TripRequest {
+    id: string;
+    busId: string;
+    passengerId: string;
+    passengerName: string;
+    status: 'pending' | 'accepted' | 'rejected' | 'expired';
+    createdAt: string;
+    pickupLocation?: { lat: number; lng: number; address?: string };
+    dropoffLocation?: { lat: number; lng: number; address?: string };
+}
+
+export const subscribeToTripRequests = (
+    busId: string,
+    callback: (requests: TripRequest[]) => void
+) => {
+    const db = getDb();
+    const tripRequestsRef = ref(db, `tripRequests/${busId}`);
+
+    const unsubscribe = onValue(tripRequestsRef, (snapshot) => {
+        const data = snapshot.val();
+        if (!data) {
+            callback([]);
+            return;
+        }
+
+        const requests = Object.values(data) as TripRequest[];
+        requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        callback(requests);
     });
+
+    return unsubscribe;
 };
 
 /**
@@ -211,6 +321,20 @@ export const updateUserProfile = async (userId: string, updates: any) => {
     await update(userRef, {
         ...updates,
         updatedAt: new Date().toISOString()
+    });
+};
+
+export const registerPushToken = async (userId: string, token: string) => {
+    const db = getDb();
+    const userRef = ref(db, `users/${userId}`);
+    const snapshot = await get(userRef);
+    const existing = snapshot.exists() ? snapshot.val() : {};
+    const existingTokens = Array.isArray(existing.pushTokens) ? existing.pushTokens : [];
+    const nextTokens = Array.from(new Set([...existingTokens, token]));
+
+    await update(userRef, {
+        pushTokens: nextTokens,
+        updatedAt: new Date().toISOString(),
     });
 };
 

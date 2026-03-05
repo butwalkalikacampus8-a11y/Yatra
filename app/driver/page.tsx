@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import DriverPanel from '@/components/driver/DriverPanel';
 import PassengerList from '@/components/driver/PassengerList';
 import VerificationPanel from '@/components/driver/VerificationPanel';
@@ -19,7 +19,17 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { subscribeToBuses, subscribeToBookings, updateBusLocation, updateLocationSharingStatus, createAlert } from '@/lib/firebaseDb';
+import {
+  subscribeToBuses,
+  subscribeToBookings,
+  subscribeToTripRequests,
+  updateBusLocation,
+  updateLocationSharingStatus,
+  attachDriverPresence,
+  setDriverOffline,
+  registerPushToken,
+  createAlert
+} from '@/lib/firebaseDb';
 import { addOfflinePassenger, removeOfflinePassenger } from '@/lib/seatManagement';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -35,6 +45,7 @@ import {
 import { AlertTriangle, Car, Wrench } from 'lucide-react';
 import { useAccidentDetection } from '@/hooks/useAccidentDetection';
 import AccidentAlert from '@/components/driver/AccidentAlert';
+import { getPushTokenFromBrowser } from '@/lib/push';
 
 export default function DriverDashboard() {
   const router = useRouter();
@@ -52,6 +63,9 @@ export default function DriverDashboard() {
   const [lastFirebaseUpdate, setLastFirebaseUpdate] = useState<Date | null>(null);
   const [notificationPermissionRequested, setNotificationPermissionRequested] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
+  const lastKnownLocationRef = useRef<{ lat: number; lng: number; heading?: number; speed?: number } | null>(null);
+  const lastFlushRef = useRef<number>(0);
+  const lastTripRequestSeenRef = useRef<string | null>(null);
 
   // Automated Accident Detection
   const { isAccidentDetected, resetDetection, triggerManualTest } = useAccidentDetection({
@@ -82,6 +96,23 @@ export default function DriverDashboard() {
       });
     }
   }, [notificationPermissionRequested]);
+
+  // Register web-push token for background/browser notifications.
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    const run = async () => {
+      try {
+        const token = await getPushTokenFromBrowser();
+        if (!token) return;
+        await registerPushToken(currentUser.uid, token);
+      } catch (error) {
+        console.warn('[Driver] Push token registration skipped:', error);
+      }
+    };
+
+    run();
+  }, [currentUser?.uid]);
 
   // Subscribe to buses from Realtime Database
   useEffect(() => {
@@ -190,11 +221,58 @@ export default function DriverDashboard() {
     return () => unsubscribe();
   }, [selectedBus, toast]);
 
-  // Get user's current location with throttling and distance checks
+  // Real-time passenger-driver handshake notifications from `tripRequests/{busId}`.
   useEffect(() => {
-    if (!locationEnabled) {
-      return;
-    }
+    if (!selectedBus) return;
+    lastTripRequestSeenRef.current = null;
+
+    const unsubscribe = subscribeToTripRequests(selectedBus.id, (requests) => {
+      if (requests.length === 0) return;
+      const newest = requests[0];
+
+      if (!lastTripRequestSeenRef.current) {
+        lastTripRequestSeenRef.current = newest.id;
+        return;
+      }
+      if (newest.id === lastTripRequestSeenRef.current) return;
+      lastTripRequestSeenRef.current = newest.id;
+
+      toast({
+        title: 'New Trip Request',
+        description: `${newest.passengerName} requested pickup from the map.`,
+        duration: 6000,
+      });
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('New Trip Request', {
+          body: `${newest.passengerName} requested your bus.`,
+          icon: '/icons/pwa-192.svg',
+          tag: `trip-request-${newest.id}`,
+        });
+      }
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready
+          .then((registration) =>
+            registration.showNotification('New Trip Request', {
+              body: `${newest.passengerName} requested your bus.`,
+              icon: '/icons/pwa-192.svg',
+              badge: '/icons/pwa-192.svg',
+              tag: `trip-request-${newest.id}`,
+              data: { url: '/driver' },
+              requireInteraction: true,
+            })
+          )
+          .catch(() => undefined);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [selectedBus, toast]);
+
+  // Driver foreground tracking with strict 5s heartbeat flush.
+  useEffect(() => {
+    if (!locationEnabled || !selectedBus?.id || !isOnline) return;
 
     if (!navigator.geolocation) {
       if (!hasGeolocationError) {
@@ -208,175 +286,127 @@ export default function DriverDashboard() {
       return;
     }
 
-    const handleGeoError = (error: GeolocationPositionError | any) => {
-      // eslint-disable-next-line no-console
-      console.log('[DRIVER] watchPosition Position Error:', {
-        code: error?.code,
-        message: error?.message,
-      });
+    const busId = selectedBus.id;
 
-      // Avoid spamming toasts; show a friendly message once
-      if (!hasGeolocationError) {
-        let message = 'Unable to access your location. Please check your browser permissions.';
-        if (error?.code === 1) {
-          message = 'Location permission was denied. Turn it on in your browser settings to share your live location.';
-        } else if (error?.code === 2) {
-          // Position unavailable or low-accuracy GPS
-          message = 'Please enable high-accuracy GPS.';
-        }
-
-        toast({
-          title: 'Location error',
-          description: message,
-          variant: 'destructive',
-        });
-        setHasGeolocationError(true);
+    const flushLocation = async () => {
+      const payload = lastKnownLocationRef.current;
+      if (!payload) return;
+      try {
+        await updateBusLocation(busId, payload);
+        lastFlushRef.current = Date.now();
+        setLastFirebaseUpdate(new Date());
+        setLocationUpdateCount((prev) => prev + 1);
+      } catch (error) {
+        console.error('[DRIVER] Failed to flush location:', error);
       }
-
-      // Still log a concise warning for debugging
-      // eslint-disable-next-line no-console
-      console.warn('Geolocation error:', {
-        code: error?.code,
-        message: error?.message,
-      });
-    };
-
-    if (!locationEnabled || !selectedBus || !isOnline) {
-      // eslint-disable-next-line no-console
-      console.log('[DRIVER] Location tracking disabled:', { locationEnabled, hasSelectedBus: !!selectedBus, isOnline });
-      return;
-    }
-
-    // eslint-disable-next-line no-console
-    console.log('[DRIVER] Starting watchPosition for bus:', selectedBus.id);
-
-    let lastUpdateTime = 0;
-    let lastLat = 0;
-    let lastLng = 0;
-    const UPDATE_INTERVAL = 5000; // 5 seconds
-    const MIN_DISTANCE_METERS = 10; // Only update if moved more than 10 meters
-
-    // Helper function to calculate distance in meters
-    const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-      const R = 6371e3; // Earth's radius in meters
-      const φ1 = lat1 * Math.PI / 180;
-      const φ2 = lat2 * Math.PI / 180;
-      const Δφ = (lat2 - lat1) * Math.PI / 180;
-      const Δλ = (lng2 - lng1) * Math.PI / 180;
-
-      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) *
-        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      return R * c;
     };
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const now = Date.now();
-        const newLocation = {
+        const next = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
+          ...(position.coords.heading !== null && !Number.isNaN(position.coords.heading)
+            ? { heading: position.coords.heading }
+            : {}),
+          ...(position.coords.speed !== null && !Number.isNaN(position.coords.speed)
+            ? { speed: Math.max(0, Math.round(position.coords.speed * 3.6)) }
+            : {}),
         };
 
-        // eslint-disable-next-line no-console
-        console.log('[DRIVER] GPS coordinate received:', {
-          lat: newLocation.lat,
-          lng: newLocation.lng,
-          accuracy: position.coords.accuracy,
-          heading: position.coords.heading,
-          speed: position.coords.speed,
-        });
-
-        setUserLocation(newLocation);
+        lastKnownLocationRef.current = next;
+        setUserLocation({ lat: next.lat, lng: next.lng });
         setLastLocationUpdate(new Date());
+        setCurrentSpeed(next.speed ?? 0);
 
-        // Check if enough time has passed and if moved enough distance
-        const timeSinceLastUpdate = now - lastUpdateTime;
-        const distanceMoved = lastLat !== 0 && lastLng !== 0
-          ? getDistance(lastLat, lastLng, newLocation.lat, newLocation.lng)
-          : MIN_DISTANCE_METERS + 1; // First update always goes through
-
-        // eslint-disable-next-line no-console
-        console.log('[DRIVER] Update check:', {
-          timeSinceLastUpdate,
-          distanceMoved,
-          shouldUpdate: timeSinceLastUpdate >= UPDATE_INTERVAL && distanceMoved >= MIN_DISTANCE_METERS,
-        });
-
-        if (timeSinceLastUpdate >= UPDATE_INTERVAL && distanceMoved >= MIN_DISTANCE_METERS) {
-          // Update Firebase with driver's location
-          const locationData: any = {
-            lat: newLocation.lat,
-            lng: newLocation.lng,
-          };
-
-          // Add heading if available
-          if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
-            locationData.heading = position.coords.heading;
-          }
-
-          // Add speed if available (convert m/s to km/h)
-          if (position.coords.speed !== null && !isNaN(position.coords.speed)) {
-            const speedKmh = Math.round(position.coords.speed * 3.6);
-            locationData.speed = speedKmh;
-            setCurrentSpeed(speedKmh);
-          } else {
-            setCurrentSpeed(0);
-          }
-
-          // eslint-disable-next-line no-console
-          console.log('[DRIVER] Calling updateBusLocation:', {
-            busId: selectedBus.id,
-            locationData,
-          });
-
-          updateBusLocation(selectedBus.id, locationData)
-            .then(() => {
-              setLastFirebaseUpdate(new Date());
-              setLocationUpdateCount(prev => prev + 1);
-              // eslint-disable-next-line no-console
-              console.log('[DRIVER] ✅ Location updated to Firebase successfully:', {
-                busId: selectedBus.id,
-                lat: newLocation.lat,
-                lng: newLocation.lng,
-                heading: locationData.heading,
-                speed: locationData.speed,
-                timestamp: new Date().toISOString(),
-                updateCount: locationUpdateCount + 1,
-              });
-            })
-            .catch((error) => {
-              // eslint-disable-next-line no-console
-              console.error('[DRIVER] ❌ Failed to update Firebase location:', {
-                busId: selectedBus.id,
-                error: error.message || error,
-                stack: error.stack,
-              });
-            });
-
-          lastUpdateTime = now;
-          lastLat = newLocation.lat;
-          lastLng = newLocation.lng;
-        } else {
-          // eslint-disable-next-line no-console
-          console.log('[DRIVER] ⏭️ Skipping update (throttled):', {
-            timeSinceLastUpdate,
-            distanceMoved,
-          });
+        if (Date.now() - lastFlushRef.current >= 5000) {
+          flushLocation().catch(() => undefined);
         }
       },
-      handleGeoError,
+      (error: GeolocationPositionError) => {
+        if (!hasGeolocationError) {
+          const message =
+            error.code === 1
+              ? 'Location permission was denied. Turn it on in browser settings.'
+              : error.code === 2
+                ? 'Location unavailable. Enable high-accuracy GPS.'
+                : 'Unable to access your location.';
+          toast({ title: 'Location error', description: message, variant: 'destructive' });
+          setHasGeolocationError(true);
+        }
+      },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 5000, // Accept cached position up to 5 seconds old
+        maximumAge: 0,
+        timeout: 15000,
       }
     );
 
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [locationEnabled, selectedBus, isOnline, toast, hasGeolocationError]);
+    const heartbeatId = window.setInterval(() => {
+      flushLocation().catch(() => undefined);
+    }, 5000);
+
+    const handleVisibility = () => {
+      flushLocation().catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pagehide', handleVisibility);
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      window.clearInterval(heartbeatId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pagehide', handleVisibility);
+    };
+  }, [locationEnabled, selectedBus?.id, isOnline, toast, hasGeolocationError]);
+
+  // RTDB presence hooks: offline state is written immediately on disconnect.
+  useEffect(() => {
+    if (!locationEnabled || !selectedBus?.id || !isOnline) return;
+
+    const cleanup = attachDriverPresence(selectedBus.id);
+    return () => {
+      cleanup().catch((error) => {
+        console.warn('[Presence] cleanup failed:', error);
+      });
+    };
+  }, [locationEnabled, selectedBus?.id, isOnline]);
+
+  // Keep screen awake while tracking to maximize background reliability in installed mode.
+  useEffect(() => {
+    if (!locationEnabled || !isOnline) return;
+    if (!('wakeLock' in navigator)) return;
+
+    let wakeLock: WakeLockSentinel | null = null;
+    let released = false;
+
+    const acquire = async () => {
+      if (released) return;
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          wakeLock = null;
+        });
+      } catch {
+        // Not fatal; browser may block wake lock while hidden/low battery.
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && !wakeLock) {
+        acquire().catch(() => undefined);
+      }
+    };
+
+    acquire().catch(() => undefined);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      released = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      if (wakeLock) wakeLock.release().catch(() => undefined);
+    };
+  }, [locationEnabled, isOnline]);
 
   const handleLocationToggle = async (enabled: boolean) => {
     if (!enabled && selectedBus) {
@@ -404,6 +434,9 @@ export default function DriverDashboard() {
       // Update Firebase with location sharing status
       try {
         await updateLocationSharingStatus(selectedBus.id, enabled);
+        if (!enabled) {
+          await setDriverOffline(selectedBus.id);
+        }
         // eslint-disable-next-line no-console
         console.log('[Driver] Location sharing', enabled ? 'enabled' : 'disabled');
 

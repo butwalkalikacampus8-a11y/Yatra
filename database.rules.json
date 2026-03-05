@@ -20,6 +20,13 @@
       ".write": "auth != null",
       ".indexOn": ["busId", "passengerId"]
     },
+    "tripRequests": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$busId": {
+        ".indexOn": ["createdAt", "status"]
+      }
+    },
     "users": {
       "$uid": {
         ".read": "auth != null", 

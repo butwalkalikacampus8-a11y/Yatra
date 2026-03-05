@@ -84,7 +84,7 @@ Yatra is built on a three-layer hybrid stack:
 ### Installation
 
 ```bash
-git clone https://github.com/your-repo/yatra.git
+git clone https://github.com/Since2024/yatra.git
 cd yatra
 npm install
 ```

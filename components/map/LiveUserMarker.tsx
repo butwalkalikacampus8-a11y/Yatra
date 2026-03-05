@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { LiveUser, VehicleTypeId } from '@/lib/types';
@@ -41,12 +41,55 @@ export default function LiveUserMarker({
     onPopupClose?: () => void;
     routeInfo?: { distance: number; duration: number } | null;
 }) {
-    const position: [number, number] = [user.lat, user.lng];
+    const targetPosition: [number, number] = [user.lat, user.lng];
+    const [position, setPosition] = useState<[number, number]>(targetPosition);
+    const positionRef = useRef<[number, number]>(targetPosition);
+    const rafRef = useRef<number | null>(null);
 
     // Pass vehicleType to the icon creator
     const icon = createRoleIcon(user.role, user.vehicleType);
     const isVerified = user.role === 'driver' && !!user.verificationBadge;
     const currentEmoji = getVehicleEmoji(user.role, user.vehicleType);
+    const targetLat = targetPosition[0];
+    const targetLng = targetPosition[1];
+
+    // Smooth marker motion between streamed GPS points.
+    useEffect(() => {
+        const [startLat, startLng] = positionRef.current;
+        const endLat = targetLat;
+        const endLng = targetLng;
+        const durationMs = 900;
+        const startTime = performance.now();
+
+        if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = null;
+        }
+
+        const animate = (now: number) => {
+            const tRaw = Math.min(1, (now - startTime) / durationMs);
+            const t = tRaw * (2 - tRaw); // easeOutQuad
+            const nextLat = startLat + (endLat - startLat) * t;
+            const nextLng = startLng + (endLng - startLng) * t;
+            const next: [number, number] = [nextLat, nextLng];
+            positionRef.current = next;
+            setPosition(next);
+
+            if (tRaw < 1) {
+                rafRef.current = requestAnimationFrame(animate);
+            } else {
+                rafRef.current = null;
+            }
+        };
+
+        rafRef.current = requestAnimationFrame(animate);
+        return () => {
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
+            }
+        };
+    }, [targetLat, targetLng]);
 
     return (
         <Marker

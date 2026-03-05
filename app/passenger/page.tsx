@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import BookingPanel from '@/components/passenger/BookingPanel';
 import SeatVisualizer from '@/components/passenger/SeatVisualizer';
 import WalletSettings from '@/components/passenger/WalletSettings';
@@ -63,6 +63,7 @@ export default function PassengerDashboard() {
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [requestStatus, setRequestStatus] = useState<'idle' | 'requesting' | 'on-trip'>('idle');
+  const lastTripRequestAtRef = useRef<Record<string, number>>({});
   const [busLocations, setBusLocations] = useState<Record<string, {
     lat: number;
     lng: number;
@@ -411,6 +412,58 @@ export default function PassengerDashboard() {
     lastNotificationByBooking,
   ]);
 
+  const sendTripRequest = async (bus: Bus) => {
+    const now = Date.now();
+    const previous = lastTripRequestAtRef.current[bus.id] || 0;
+    if (now - previous < 15000) return;
+
+    const fallbackLocation = pickupLocation || userLocation;
+    if (!fallbackLocation) return;
+
+    lastTripRequestAtRef.current[bus.id] = now;
+
+    const response = await fetch('/api/trip-requests/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        busId: bus.id,
+        pickupLocation: {
+          lat: fallbackLocation.lat,
+          lng: fallbackLocation.lng,
+          address: pickupLocation?.address || 'Current Location',
+        },
+        ...(dropoffLocation ? {
+          dropoffLocation: {
+            lat: dropoffLocation.lat,
+            lng: dropoffLocation.lng,
+            address: dropoffLocation.address || 'Dropoff',
+          },
+        } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data?.error || 'Failed to send trip request');
+    }
+  };
+
+  const handleBusSelect = (bus: Bus) => {
+    setSelectedBus(bus);
+    setRequestStatus('requesting');
+
+    sendTripRequest(bus)
+      .then(() => {
+        toast({
+          title: 'Trip request sent',
+          description: `Driver of ${bus.busNumber} has been notified.`,
+        });
+      })
+      .catch((error) => {
+        console.warn('[Passenger] Trip request failed:', error);
+      });
+  };
+
   const handleBookBus = async (bus: Bus, bookingData?: any) => {
     if (!pickupLocation) {
       toast({
@@ -494,6 +547,7 @@ export default function PassengerDashboard() {
       setSelectedBus(null);
       setPickupLocation(null);
       setDropoffLocation(null);
+      setRequestStatus('on-trip');
 
       toast({
         title: 'Booking confirmed',
@@ -508,6 +562,7 @@ export default function PassengerDashboard() {
         description: message,
         variant: 'destructive',
       });
+      setRequestStatus('idle');
     } finally {
       setBookingLoading(false);
     }
@@ -530,6 +585,7 @@ export default function PassengerDashboard() {
   const handleResetLocations = () => {
     setPickupLocation(null);
     setDropoffLocation(null);
+    setRequestStatus('idle');
   };
 
   const filteredBuses = buses.filter((bus) =>
@@ -739,7 +795,7 @@ export default function PassengerDashboard() {
           role="passenger"
           buses={filteredBuses}
           selectedBus={selectedBus}
-          onBusSelect={setSelectedBus}
+          onBusSelect={handleBusSelect}
           onLocationSelect={handleLocationSelect}
           showRoute={!!selectedBus}
           pickupLocation={pickupLocation}
