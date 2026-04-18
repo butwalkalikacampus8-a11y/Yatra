@@ -214,19 +214,25 @@ function ProfilePageContent() {
         }),
       });
 
-      if (!registerRes.ok) throw new Error('Registration API failed');
+      if (!registerRes.ok) {
+        const errData = await registerRes.json().catch(() => ({}));
+        throw new Error(`Register failed: ${(errData as { error?: string }).error || registerRes.status}`);
+      }
 
       const freshToken = await currentUser.getIdToken(true);
 
-      await fetch('/api/sessionLogin', {
+      const sessionRes = await fetch('/api/sessionLogin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken: freshToken, role: 'driver' }),
       });
+      if (!sessionRes.ok) {
+        const errData = await sessionRes.json().catch(() => ({}));
+        throw new Error(`Session failed: ${(errData as { error?: string }).error || sessionRes.status}`);
+      }
 
       setRole('driver');
 
-      // 2. Database writes - Using 'restOfData' to avoid 'name' and 'capacity' collision
       await createUserProfile(currentUser.uid, {
         ...restOfData,
         phone: currentUser.phoneNumber || '',
@@ -236,7 +242,6 @@ function ProfilePageContent() {
         isApproved: false,
       });
 
-      // 3. RTDB Setup
       const rtdb = getDatabase(getFirebaseApp());
       const nowIso = new Date().toISOString();
       await rtdbSet(ref(rtdb, `buses/${currentUser.uid}`), {
@@ -259,8 +264,9 @@ function ProfilePageContent() {
       toast({ title: 'Success!', description: 'Profile created.' });
       window.location.assign('/driver');
     } catch (error) {
-      console.error(error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to create profile.' });
+      console.error('[driver-submit]', error);
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      toast({ variant: 'destructive', title: 'Error', description: msg });
     } finally {
       setIsSubmitting(false);
     }
