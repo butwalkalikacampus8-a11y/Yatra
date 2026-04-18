@@ -217,6 +217,13 @@ function ProfilePageContent() {
       if (!registerRes.ok) throw new Error('Registration API failed');
 
       const freshToken = await currentUser.getIdToken(true);
+
+      await fetch('/api/sessionLogin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: freshToken, role: 'driver' }),
+      });
+
       setRole('driver');
 
       // 2. Database writes - Using 'restOfData' to avoid 'name' and 'capacity' collision
