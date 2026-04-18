@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Outfit, JetBrains_Mono, Mukta } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
@@ -23,11 +23,14 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#05070A",
+};
+
 export const metadata: Metadata = {
   title: "YATRA",
   description: "Track your bus in real-time, book seats, and share your ride.",
   manifest: "/manifest.json",
-  themeColor: "#05070A",
   applicationName: "Yatra",
   appleWebApp: {
     capable: true,
