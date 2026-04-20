@@ -14,7 +14,7 @@ export async function POST() {
   });
 
   response.cookies.set('role', '', {
-    httpOnly: false,
+    httpOnly: true,
     secure: isProd,
     path: '/',
     sameSite: 'lax',

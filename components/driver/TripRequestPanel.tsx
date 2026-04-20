@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Clock, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,8 @@ export default function TripRequestPanel({
   onCompleteTrip,
 }: TripRequestPanelProps) {
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
+  const onRejectRef = useRef(onReject);
+  onRejectRef.current = onReject;
 
   const pickupLat = request.pickupLocation?.lat ?? request.lat;
   const pickupLng = request.pickupLocation?.lng ?? request.lng;
@@ -54,7 +56,7 @@ export default function TripRequestPanel({
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          onReject();
+          onRejectRef.current();
           return 0;
         }
         return prev - 1;

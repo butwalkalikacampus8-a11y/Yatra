@@ -70,7 +70,7 @@ export default function DriverDashboard() {
   const [lastFirebaseUpdate, setLastFirebaseUpdate] = useState<Date | null>(null);
   const [notificationPermissionRequested, setNotificationPermissionRequested] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
-  const [activeTripRequest, setActiveTripRequest] = useState<{ id: string; lat: number; lng: number; status: string; passengerName: string; pickupLocation?: { lat: number; lng: number; address?: string } } | null>(null);
+  const [activeTripRequest, setActiveTripRequest] = useState<{ id: string; lat: number; lng: number; status: string; passengerName: string; pickupLocation?: { lat: number; lng: number; address?: string }; bookingId?: string } | null>(null);
   const [passengerLocation, setPassengerLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [driverActiveRoute, setDriverActiveRoute] = useState<GeoJSON.LineString | null>(null);
   const driverLastEtaFetchRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -224,7 +224,7 @@ export default function DriverDashboard() {
             oscillator.stop(audioContext.currentTime + 0.5);
           } catch (e) {
             // Fallback: use browser beep
-            console.log('\u0007'); // ASCII bell character
+            console.warn('[Driver] Web Audio API unavailable for notification sound');
           }
 
           // Show toast notification
@@ -440,7 +440,7 @@ export default function DriverDashboard() {
     if (!activeTripRequest) return;
     try {
       await updateTripStatus(activeTripRequest.id, 'completed');
-      const bookingId = (activeTripRequest as any).bookingId as string | undefined;
+      const bookingId = activeTripRequest.bookingId;
       if (bookingId) {
         await handlePassengerDropoff(bookingId);
       }
