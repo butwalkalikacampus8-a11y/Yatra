@@ -66,7 +66,6 @@ export interface Driver extends User {
     zkCommitment?: string;        // Poseidon commitment anchored on Solana
     zkMemoSignature?: string;     // Tx signature of the on-chain Memo
     zkMemoExplorerLink?: string;  // Explorer link for the Memo tx
-    zkDemoMode?: boolean;         // True if proof was not cryptographically verified
     ageVerified?: boolean;        // True if ZK age proof passed
   };
 }

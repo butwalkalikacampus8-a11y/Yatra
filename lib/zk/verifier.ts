@@ -1,11 +1,11 @@
+import * as snarkjs from 'snarkjs';
 import { join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 
-// ── Verification Key (cached after first load) ─────────────────────────────
-let verificationKey: any | null = null;
+let _verificationKey: any | null = null;
 
 function getVerificationKey(): any {
-    if (verificationKey) return verificationKey;
+    if (_verificationKey) return _verificationKey;
 
     const paths = [
         join(process.cwd(), 'lib', 'zk', 'verification_key.json'),
@@ -16,70 +16,53 @@ function getVerificationKey(): any {
         if (existsSync(vkeyPath)) {
             try {
                 const data = readFileSync(vkeyPath, 'utf-8');
-                verificationKey = JSON.parse(data);
-                console.log(`[ZK Verifier] ✅ Key loaded: ${vkeyPath}`);
-                return verificationKey;
+                _verificationKey = JSON.parse(data);
+                console.log(`[ZK Verifier] Key loaded: ${vkeyPath}`);
+                return _verificationKey;
             } catch (e) {
-                console.error(`[ZK Verifier] ❌ JSON Parse Error at ${vkeyPath}:`, e);
+                console.error(`[ZK Verifier] Failed to parse key at ${vkeyPath}:`, e);
             }
         }
     }
-    return null;
+
+    throw new Error('[ZK Verifier] verification_key.json not found');
 }
 
-// ── Public Interface ───────────────────────────────────────────────────────
 export interface ZKVerifyResult {
     isValid: boolean;
-    commitment: string;
-    ageValid: boolean;
-    demoMode: boolean;
+    commitment?: string;
+    ageValid?: boolean;
     error?: string;
 }
 
-/**
- * Modified for Demo: Bypasses the CPU-intensive Worker Thread 
- * to ensure Solana minting succeeds.
- */
 export async function verifyDriverProof(
     proof: any,
     publicSignals: any
 ): Promise<ZKVerifyResult> {
-    const commitment = String(publicSignals?.[0] ?? '0');
-    const ageValidRaw = String(publicSignals?.[1] ?? '0');
+    try {
+        const vKey = getVerificationKey();
 
-    // In ZK logic, 1 usually means "True/Valid"
-    const ageValid = ageValidRaw === '1';
+        const isValid = await snarkjs.groth16.verify(vKey, publicSignals, proof);
 
-    console.log('------------------------------------------');
-    console.log(`[ZK Verifier] 🚀 DEMO MODE: Bypassing Groth16 Math`);
-    console.log(`[ZK Verifier] Checking Commitment: ${commitment.slice(0, 10)}...`);
+        if (!isValid) {
+            console.warn('[ZK Verifier] Groth16 verification failed — invalid proof');
+            return { isValid: false, error: 'Groth16 proof invalid' };
+        }
 
-    // We still validate the logic: the proof signals must indicate the age is valid
-    if (!ageValid) {
-        console.warn('[ZK Verifier] ❌ Logic Check Failed: Age signal is not valid.');
-        return {
-            isValid: false,
-            commitment,
-            ageValid: false,
-            demoMode: true,
-            error: "Age verification signal failed."
-        };
+        const commitment = String(publicSignals?.[0] ?? '');
+        const ageValidSignal = String(publicSignals?.[1] ?? '0');
+        const ageValid = ageValidSignal === '1';
+
+        if (!ageValid) {
+            console.warn('[ZK Verifier] Proof valid but ageValid=0 — driver underage');
+            return { isValid: false, commitment, ageValid: false, error: 'Age requirement not met' };
+        }
+
+        console.log(`[ZK Verifier] Proof verified — commitment: ${commitment.slice(0, 10)}...`);
+        return { isValid: true, commitment, ageValid: true };
+
+    } catch (error: any) {
+        console.error('[ZK Verifier] Exception during verification:', error.message);
+        return { isValid: false, error: error.message };
     }
-
-    // Load key just to confirm files are present, but don't run the math
-    const vKey = getVerificationKey();
-    if (vKey) {
-        console.log('[ZK Verifier] ✅ Verification Key present. Ready for production.');
-    }
-
-    console.log(`[ZK Verifier] 🏁 Proof Accepted via Demo Bypass.`);
-    console.log(`[ZK Verifier] Proceeding to Solana Minting...`);
-    console.log('------------------------------------------');
-
-    return {
-        isValid: true,
-        commitment,
-        ageValid: true,
-        demoMode: true
-    };
 }

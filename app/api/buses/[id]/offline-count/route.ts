@@ -14,9 +14,8 @@ function getAdminApp() {
       throw new Error('Missing Firebase admin configuration');
     }
 
-    // Use regional database URL if provided, otherwise default to asia-southeast1
-    const databaseURL = process.env.FIREBASE_DATABASE_URL || 
-      `https://${projectId}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+    const databaseURL = process.env.FIREBASE_DATABASE_URL ||
+      `https://${projectId}-default-rtdb.europe-west1.firebasedatabase.app`;
 
     return initializeApp({
       credential: cert({ projectId, clientEmail, privateKey } as ServiceAccount),

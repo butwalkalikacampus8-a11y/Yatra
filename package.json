@@ -29,6 +29,7 @@
     "bigint-buffer": "^1.1.5",
     "bs58": "^6.0.0",
     "bufferutil": "^4.1.0",
+    "circomlib": "^2.0.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "crypto": "^1.0.1",

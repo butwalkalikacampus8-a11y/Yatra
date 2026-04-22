@@ -56,10 +56,13 @@ export async function POST(request: Request) {
         const zkResult = await verifyDriverProof(zkProof, zkPublicSignals);
 
         if (!zkResult.isValid) {
-            console.error("❌ [ZK] Invalid Proof");
-            return NextResponse.json({ error: 'ZK proof invalid' }, { status: 403 });
+            console.error("❌ [ZK] Proof rejected:", zkResult.error);
+            return NextResponse.json(
+                { error: zkResult.error ?? 'ZK proof verification failed' },
+                { status: 400 }
+            );
         }
-        console.log("✅ [ZK] Proof Math Valid");
+        console.log("✅ [ZK] Proof verified");
 
         // ── Step 2: Connection & Balance Check ────────────────────────────
         const connection = getConnection();

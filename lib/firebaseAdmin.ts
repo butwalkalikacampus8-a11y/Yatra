@@ -29,7 +29,7 @@ function ensureAdminAppInitialized() {
 
   const databaseURL =
     process.env.FIREBASE_DATABASE_URL ||
-    `https://${projectId}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+    `https://${projectId}-default-rtdb.europe-west1.firebasedatabase.app`;
 
   initializeApp({ credential: cert(serviceAccount), databaseURL });
 }
